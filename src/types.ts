@@ -59,6 +59,13 @@ export enum WatchStatus {
     DROPPED = 'dropped'
 }
 
+export const WATCH_STATUS_LABELS: Record<WatchStatus, string> = {
+	[WatchStatus.PLANNED]: '计划观看',
+	[WatchStatus.WATCHING]: '正在观看',
+	[WatchStatus.COMPLETED]: '已看完',
+	[WatchStatus.DROPPED]: '已弃剧'
+};
+
 export enum SortBy {
     WATCH_DATE = 'watch_date',
     TITLE = 'title',
@@ -95,8 +102,7 @@ export interface TMDBMovieDetails {
     runtime: number | null;
     release_date: string;
     poster_path: string | null;
-    overview: string;
-    duration?: number;
+	overview: string;
 }
 
 export interface TMDBTVShowDetails {

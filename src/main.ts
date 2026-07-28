@@ -1,45 +1,37 @@
 import { App, Modal, Notice, Plugin, Setting, TFile, requestUrl } from 'obsidian';
-import { PluginSettings, DEFAULT_SETTINGS } from './types';
+import { PluginSettings, DEFAULT_SETTINGS, WatchStatus } from './types';
 import { MovieLogSettingTab } from './settings';
 import { SearchModal } from './search-modal';
 import { getMovieDetails, getTVShowDetails, getSeasonDetails, initTmdbCache, getTmdbCacheForPersist, setTmdbCachePersistCallback, TmdbCacheEntry } from './tmdb-api';
 import {
-    generateMovieRecord,
-    generateTVRecord,
-    createRecordFile,
-    generateMovieFileName,
-    generateTVFileName,
-    UserRecordInput
+	generateMovieRecord,
+	generateTVRecord,
+	appendToYearFile,
+	UserRecordInput
 } from './record-generator';
 import { MovieLogView, VIEW_TYPE_MOVIELOG } from './card-wall-view';
 import { reportError } from './utils';
+import { formatLocalDate, RecordFormInput, validateRecordForm } from './record-input';
+import { getPosterCacheFileName } from './poster-cache';
 
 class AddRecordModal extends Modal {
-    private result: UserRecordInput;
+	private result: RecordFormInput;
     private onSubmit: (result: UserRecordInput) => void;
 
     constructor(app: App, onSubmit: (result: UserRecordInput) => void) {
         super(app);
         this.onSubmit = onSubmit;
         this.result = {
-            year: new Date().getFullYear().toString(),
-            watchDate: new Date().toISOString().split('T')[0],
-            rating: '',
-            platform: '',
-            status: 'completed'
+			watchDate: formatLocalDate(),
+			rating: '',
+			platform: '',
+			status: WatchStatus.COMPLETED
         };
     }
 
     onOpen() {
         const { contentEl } = this;
         contentEl.createEl('h2', { text: '添加观影记录' });
-
-        new Setting(contentEl)
-            .setName('年份')
-            .setDesc('观影年份（如：2024）')
-            .addText(text => text
-                .setValue(this.result.year || '')
-                .onChange(value => this.result.year = value));
 
         new Setting(contentEl)
             .setName('观看日期')
@@ -66,21 +58,26 @@ class AddRecordModal extends Modal {
             .setName('观看状态')
             .setDesc('当前观看状态')
             .addDropdown(dropdown => dropdown
-                .addOption('planned', '计划观看')
-                .addOption('watching', '正在观看')
-                .addOption('completed', '已看完')
-                .addOption('dropped', '已弃剧')
-                .setValue(this.result.status || 'planned')
-                .onChange(value => this.result.status = value));
+				.addOption(WatchStatus.PLANNED, '计划观看')
+				.addOption(WatchStatus.WATCHING, '正在观看')
+				.addOption(WatchStatus.COMPLETED, '已看完')
+				.addOption(WatchStatus.DROPPED, '已弃剧')
+				.setValue(this.result.status)
+				.onChange(value => this.result.status = value as WatchStatus));
 
         new Setting(contentEl)
-            .addButton(btn => btn
-                .setButtonText('确认添加')
-                .setCta()
-                .onClick(() => {
-                    this.close();
-                    this.onSubmit(this.result);
-                }));
+			.addButton(btn => btn
+				.setButtonText('确认添加')
+				.setCta()
+				.onClick(() => {
+					const validation = validateRecordForm(this.result);
+					if (!validation.ok) {
+						new Notice(validation.message);
+						return;
+					}
+					this.close();
+					this.onSubmit(validation.value);
+				}));
     }
 
     onClose() {
@@ -106,7 +103,9 @@ export default class MovieLogPlugin extends Plugin {
 
 		setTmdbCachePersistCallback(() => {
 			const data = { ...this.settings, _tmdbCache: getTmdbCacheForPersist() };
-			void this.saveData(data);
+			void this.saveData(data).catch((error) => {
+				console.error('[MovieLog] 保存 TMDB 缓存失败:', error);
+			});
 		});
 
         this.addCommand({
@@ -136,7 +135,10 @@ export default class MovieLogPlugin extends Plugin {
                                         const content = generateMovieRecord(details, this.settings, userInput);
                                         let finalContent = content;
                                         if (this.settings.posterCacheEnabled && details.poster_path) {
-                                            const localPath = await this.downloadPoster(details.poster_path, details.id);
+											const localPath = await this.downloadPoster(
+												getPosterCacheFileName('movie', details.id, details.poster_path),
+												details.poster_path
+											);
                                             if (localPath) {
                                                 finalContent = content.replace(
                                                     /!\[宣传海报\|\d+\]\(https:\/\/image\.tmdb\.org\/[^)]+\)/,
@@ -144,8 +146,7 @@ export default class MovieLogPlugin extends Plugin {
                                                 );
                                             }
                                         }
-                                        const fileName = generateMovieFileName(details);
-                                        const file = await createRecordFile(this.app, finalContent, this.settings.defaultSaveFolder, fileName, userInput.watchDate || null, 'movie', this.writingPaths);
+										const file = await appendToYearFile(this.app, finalContent, this.settings.defaultSaveFolder, userInput.watchDate, 'movie', this.writingPaths);
                                         this.refreshCardWall();
                                         await this.app.workspace.openLinkText(file.path, '', true);
                                         new Notice(`已创建: ${file.basename}`);
@@ -189,7 +190,10 @@ export default class MovieLogPlugin extends Plugin {
                                                     if (this.settings.posterCacheEnabled) {
                                                         const posterPath = seasonDetails.poster_path || showDetails.poster_path;
                                                         if (posterPath) {
-                                                            const localPath = await this.downloadPoster(posterPath, showDetails.id);
+											const localPath = await this.downloadPoster(
+												getPosterCacheFileName('tv', showDetails.id, posterPath, seasonNumber),
+												posterPath
+											);
                                                             if (localPath) {
                                                                 finalContent = content.replace(
                                                                     /!\[宣传海报\|\d+\]\(https:\/\/image\.tmdb\.org\/[^)]+\)/,
@@ -198,8 +202,7 @@ export default class MovieLogPlugin extends Plugin {
                                                             }
                                                         }
                                                     }
-                                                    const fileName = generateTVFileName(showDetails, seasonNumber);
-                                                    const file = await createRecordFile(this.app, finalContent, this.settings.defaultSaveFolder, fileName, userInput.watchDate || null, 'tv', this.writingPaths);
+											const file = await appendToYearFile(this.app, finalContent, this.settings.defaultSaveFolder, userInput.watchDate, 'tv', this.writingPaths);
                                                     this.refreshCardWall();
                                                     await this.app.workspace.openLinkText(file.path, '', true);
                                                     new Notice(`已创建: ${file.basename}`);
@@ -297,13 +300,12 @@ export default class MovieLogPlugin extends Plugin {
         this.refreshCardWall();
     }
 
-    private async downloadPoster(posterPath: string, tmdbId: number): Promise<string | null> {
+	private async downloadPoster(fileName: string, posterPath: string): Promise<string | null> {
         const url = `https://image.tmdb.org/t/p/original${posterPath}`;
         try {
             const response = await requestUrl({ url });
             const folderPath = `${this.settings.defaultSaveFolder.replace(/^\/|\/$/g, '')}/_posters`;
-            const fileName = `${tmdbId}.jpg`;
-            const filePath = `${folderPath}/${fileName}`;
+			const filePath = `${folderPath}/${fileName}`;
 
             await this.app.vault.createFolder(folderPath).catch(() => {});
 
@@ -312,8 +314,8 @@ export default class MovieLogPlugin extends Plugin {
 
             await this.app.vault.createBinary(filePath, response.arrayBuffer);
             return filePath;
-        } catch {
-            reportError('海报下载失败', `tmdb_id=${tmdbId}`);
+		} catch (error) {
+			reportError('海报下载失败', error);
             return null;
         }
     }
