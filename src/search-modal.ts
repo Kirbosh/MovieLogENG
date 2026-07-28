@@ -1,6 +1,6 @@
 import { App, Modal } from 'obsidian';
 import { TMDBSearchResult } from './types';
-import { searchMulti, getYear, buildPosterUrl } from './tmdb-api';
+import { searchMovie, searchMulti, searchTV, getYear, buildPosterUrl } from './tmdb-api';
 
 export class SearchModal extends Modal {
     private query: string = '';
@@ -8,8 +8,9 @@ export class SearchModal extends Modal {
     private onSelect: (result: TMDBSearchResult) => void;
     private apiKey: string;
     private language: string;
-    private mediaType: 'movie' | 'tv' | 'all';
-    private resultContainer: HTMLElement;
+	private mediaType: 'movie' | 'tv' | 'all';
+	private resultContainer: HTMLElement;
+	private searchRequestId = 0;
 
     constructor(
         app: App,
@@ -41,21 +42,25 @@ export class SearchModal extends Modal {
 
         const searchBtn = inputContainer.createEl('button', { text: '搜索', cls: 'movielog-search-btn' });
 
-        const doSearch = async () => {
-            this.query = input.value.trim();
-            if (!this.query) return;
+		const doSearch = async () => {
+			this.query = input.value.trim();
+			if (!this.query) return;
+			const requestId = ++this.searchRequestId;
 
             this.resultContainer.empty();
             this.resultContainer.createEl('p', { text: '搜索中...', cls: 'movielog-search-status' });
 
-            try {
-                let results = await searchMulti(this.query, this.apiKey, this.language);
-                if (this.mediaType !== 'all') {
-                    results = results.filter(r => r.media_type === this.mediaType);
-                }
-                this.results = results;
-                this.renderResults();
-            } catch (error) {
+			try {
+				const results = this.mediaType === 'movie'
+					? await searchMovie(this.query, this.apiKey, this.language)
+					: this.mediaType === 'tv'
+						? await searchTV(this.query, this.apiKey, this.language)
+						: await searchMulti(this.query, this.apiKey, this.language);
+				if (requestId !== this.searchRequestId) return;
+				this.results = results;
+				this.renderResults();
+			} catch (error) {
+				if (requestId !== this.searchRequestId) return;
                 this.resultContainer.empty();
                 this.resultContainer.createEl('p', {
                     text: `搜索失败: ${error instanceof Error ? error.message : '未知错误'}`,
@@ -103,8 +108,9 @@ export class SearchModal extends Modal {
         }
     }
 
-    onClose(): void {
-        const { contentEl } = this;
+	onClose(): void {
+		this.searchRequestId++;
+		const { contentEl } = this;
         contentEl.empty();
     }
 }
