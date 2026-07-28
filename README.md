@@ -62,9 +62,10 @@ cp main.js manifest.json styles.css /path/to/your/vault/.obsidian/plugins/moviel
 3. Configure other options:
    - **Default Save Folder**: Directory for watch records (default: `MovieLog`)
    - **TMDB Language**: Metadata language (default: Simplified Chinese)
-   - **Card Size**: Display size of cards in the card wall
    - **Sort By**: Sort by watch date, title, rating, or release date
    - **Sub-Heading Style**: Display format for section headings in records — either `> **bold blockquote**` (default) or `### heading`
+
+MovieLog currently supports Obsidian desktop only. Mobile has not been tested and is not supported.
 
 ## Usage
 
