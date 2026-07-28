@@ -1,29 +1,10 @@
 import { ItemView, WorkspaceLeaf, TFile } from 'obsidian';
 import { PluginSettings, SortBy } from './types';
+import { parseLocalDate } from './record-input';
+import { ParsedRecord, parseYearFileContent } from './record-parser';
+import { getDisplayRating, renderRatingStars } from './rating';
 
 export const VIEW_TYPE_MOVIELOG = 'movielog-wall';
-
-interface ParsedRecord {
-    type: 'movie' | 'tv';
-    title: string;
-    tmdb_id: number;
-    poster: string;
-    genres: string[];
-    tmdb_rating: number;
-    release_date: string;
-    tmdb_link: string;
-    duration: number;
-    season_number?: number;
-    season_name?: string;
-    episode_count?: number;
-    watch_date: string | null;
-    watch_status: string;
-    personal_rating: number | null;
-    year: string;
-    overview: string;
-    watch_platform: string | null;
-    review: string | null;
-}
 
 interface CacheEntry {
     mtime: number;
@@ -187,7 +168,7 @@ export class MovieLogView extends ItemView {
 				}
 				const year = file.basename;
 				const content = await this.app.vault.read(file);
-				const records = this.parseYearFileContent(content, year);
+				const records = parseYearFileContent(content, year);
 				this.fileCache.set(file.path, { mtime: file.stat.mtime, records });
 				return records;
 			} catch (error) {
@@ -197,89 +178,6 @@ export class MovieLogView extends ItemView {
 		}));
 
         return results.flat();
-    }
-
-    private parseYearFileContent(content: string, year: string): ParsedRecord[] {
-        const records: ParsedRecord[] = [];
-        const recordRegex = /## (.+?)\n\n([\s\S]*?)(?=\n## |$)/g;
-        let match;
-
-        while ((match = recordRegex.exec(content)) !== null) {
-            const rawTitle = match[1] || '';
-            const title = rawTitle.replace(/^[🎬📺]\s*/u, '');
-            const block = normalizeSectionHeaders(match[2] || '');
-
-            const infoSectionMatch = block.match(/### (电影信息|本季信息)\n\n([\s\S]*?)(?=\n### |$)/);
-            if (!infoSectionMatch) continue;
-
-            const infoTitle = infoSectionMatch[1] || '';
-            const infoContent = infoSectionMatch[2] || '';
-            const type: 'movie' | 'tv' = infoTitle === '电影信息' ? 'movie' : 'tv';
-
-            const posterMatch = infoContent.match(/!\[宣传海报\|\d+\]\((.*?)\)/);
-            const poster = posterMatch ? posterMatch[1] || '' : '';
-
-            const fields: Record<string, string> = {};
-            const fieldRegex = /- \*\*(.+?)\*\*:\s*(.+)/g;
-            let fieldMatch;
-            while ((fieldMatch = fieldRegex.exec(infoContent)) !== null) {
-                fields[fieldMatch[1] || ''] = fieldMatch[2] || '';
-            }
-
-            const tmdbId = parseInt(fields['TMDB ID'] || '0', 10);
-            if (!title || tmdbId === 0) continue;
-
-            const tmdbLink = fields['TMDB链接'] || '';
-            const genresStr = fields['类型'] || '';
-            const tmdbRatingStr = type === 'movie' ? fields['评分'] : fields['剧评分'];
-            const tmdbRating = tmdbRatingStr ? parseFloat(tmdbRatingStr.replace(/[★☆\s]/g, '').split('/')[0] || '0') : 0;
-            const releaseDate = type === 'movie' ? (fields['上映日期'] || '') : (fields['播出年份'] || '');
-            const duration = type === 'movie' ? parseInt(fields['片长'] || '0', 10) : 0;
-            const overview = fields['剧情简介'] || fields['本季简介'] || '';
-
-            const watchSectionMatch = block.match(/### 我的观看记录\n\n([\s\S]*?)(?=\n### |$)/);
-            const watchContent = watchSectionMatch ? watchSectionMatch[1] || '' : '';
-
-            const watchFields: Record<string, string> = {};
-            const watchFieldRegex = /- \*\*(.+?)\*\*:\s*(.+)/g;
-            let watchFieldMatch;
-            while ((watchFieldMatch = watchFieldRegex.exec(watchContent)) !== null) {
-                watchFields[watchFieldMatch[1] || ''] = watchFieldMatch[2] || '';
-            }
-
-            const reviewMatch = block.match(/### (?:观后感|本季观感)\n\n([\s\S]*?)(?=\n---|$)/);
-
-            const record: ParsedRecord = {
-                type,
-                title: title.replace(/\s*\(.*?\)\s*$/, '').replace(/\s*-\s*第\d+季\s*$/, '').trim(),
-                tmdb_id: tmdbId,
-                poster,
-                genres: genresStr ? genresStr.split('、').map(g => g.trim()).filter(Boolean) : [],
-                tmdb_rating: tmdbRating,
-                release_date: releaseDate,
-                tmdb_link: tmdbLink,
-                duration,
-                watch_date: watchFields['完成日期'] || null,
-                watch_status: watchFields['观看状态'] || '计划观看',
-                personal_rating: watchFields['我的评分'] ? parseFloat(watchFields['我的评分']) : null,
-                year,
-                overview: overview.trim(),
-                watch_platform: watchFields['观看平台'] || null,
-                review: reviewMatch ? (reviewMatch[1] || '').trim() : null
-            };
-
-            if (type === 'tv') {
-                const seasonNameMatch = fields['季名'] || '';
-                const seasonNumMatch = seasonNameMatch.match(/(\d+)/);
-                record.season_number = seasonNumMatch ? parseInt(seasonNumMatch[1] || '0', 10) : 0;
-                record.season_name = seasonNameMatch;
-                record.episode_count = parseInt(fields['集数'] || '0', 10);
-            }
-
-            records.push(record);
-        }
-
-        return records;
     }
 
     private sortRecords(records: ParsedRecord[]): void {
@@ -381,31 +279,31 @@ export class MovieLogView extends ItemView {
 
         const right = card.createDiv({ cls: 'movielog-poster-card-right' });
 
-        const yearDate = right.createDiv();
-        yearDate.createDiv({ cls: 'movielog-poster-card-year', text: record.year || '' });
-        if (record.watch_date) {
-            const dateObj = new Date(record.watch_date);
-            const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-            const dayName = days[dateObj.getDay()];
-            const monthDay = `${dateObj.getMonth() + 1}.${dateObj.getDate()}`;
-            yearDate.createDiv({ cls: 'movielog-poster-card-date', text: `${dayName}.${monthDay}` });
-        }
+		const yearDate = right.createDiv();
+		yearDate.createDiv({ cls: 'movielog-poster-card-year', text: record.year || '' });
+		if (record.watch_date) {
+			const dateObj = parseLocalDate(record.watch_date);
+			if (dateObj) {
+			const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+			const dayName = days[dateObj.getDay()];
+			const monthDay = `${dateObj.getMonth() + 1}.${dateObj.getDate()}`;
+			yearDate.createDiv({ cls: 'movielog-poster-card-date', text: `${dayName}.${monthDay}` });
+			}
+		}
 
-        const rating = right.createDiv({ cls: 'movielog-poster-card-rating' });
-        const score = record.personal_rating || record.tmdb_rating;
-        const stars = this.renderStars(score);
-        rating.createDiv({ cls: 'movielog-poster-stars', text: stars });
-        const scoreEl = rating.createDiv({ cls: 'movielog-poster-score' });
-        scoreEl.createSpan({ cls: 'movielog-score-main', text: score.toFixed(1) });
-        scoreEl.createSpan({ cls: 'movielog-score-unit', text: '/10' });
-    }
+		const rating = right.createDiv({ cls: 'movielog-poster-card-rating' });
+		const score = getDisplayRating(record.personal_rating, record.tmdb_rating);
+		if (score === null) {
+			rating.createDiv({ cls: 'movielog-poster-score', text: '暂无评分' });
+			return;
+		}
 
-    private renderStars(rating: number): string {
-        const fullStars = Math.floor(rating / 2);
-        const halfStar = (rating / 2) - fullStars >= 0.5;
-        const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
-        return '★'.repeat(fullStars) + (halfStar ? '☆' : '') + '☆'.repeat(emptyStars);
-    }
+		const stars = renderRatingStars(score);
+		rating.createDiv({ cls: 'movielog-poster-stars', text: stars });
+		const scoreEl = rating.createDiv({ cls: 'movielog-poster-score' });
+		scoreEl.createSpan({ cls: 'movielog-score-main', text: score.toFixed(1) });
+		scoreEl.createSpan({ cls: 'movielog-score-unit', text: '/10' });
+	}
 
 	private resolveLocalPosterUrl(posterPath: string): string {
 		const file = this.app.vault.getAbstractFileByPath(posterPath);
@@ -436,11 +334,4 @@ export class MovieLogView extends ItemView {
             this.resizeObserver = null;
         }
     }
-}
-
-function normalizeSectionHeaders(block: string): string {
-    return block.replace(
-        /^(?:> )?\*\*(电影信息|本季信息|我的观看记录|观后感|本季观感)\*\*$/gm,
-        '### $1'
-    );
 }
