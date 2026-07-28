@@ -1,9 +1,9 @@
 {
 	"id": "movielog",
 	"name": "MovieLog",
-	"version": "0.8.3",
 	"minAppVersion": "1.7.2",
 	"description": "Log your movie and TV show watching history with TMDB integration.",
 	"author": "tinazz",
-	"isDesktopOnly": true
+	"isDesktopOnly": true,
+	"version": "0.8.4"
 }
