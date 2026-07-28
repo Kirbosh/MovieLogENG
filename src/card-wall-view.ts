@@ -160,7 +160,7 @@ export class MovieLogView extends ItemView {
             }
         }
 
-		const results = await Promise.all(files.map(async (file) => {
+		const results: ParsedRecord[][] = await Promise.all(files.map(async (file): Promise<ParsedRecord[]> => {
 			try {
 				const cached = this.fileCache.get(file.path);
 				if (cached && cached.mtime === file.stat.mtime) {
@@ -177,7 +177,11 @@ export class MovieLogView extends ItemView {
 			}
 		}));
 
-        return results.flat();
+		const records: ParsedRecord[] = [];
+		for (const yearRecords of results) {
+			records.push(...yearRecords);
+		}
+		return records;
     }
 
     private sortRecords(records: ParsedRecord[]): void {

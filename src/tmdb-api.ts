@@ -19,17 +19,24 @@ let persistCallback: (() => void) | null = null;
 let persistTimer: number | null = null;
 
 export function initTmdbCache(data: Record<string, TmdbCacheEntry>): void {
-	memoryCache.clear();
-	for (const [key, entry] of Object.entries(pruneTmdbCacheEntries(data))) {
-		memoryCache.set(key, entry);
-	}
+	replaceMemoryCache(pruneTmdbCacheEntries(data));
 }
 
 export function getTmdbCacheForPersist(): Record<string, TmdbCacheEntry> {
-	const result = pruneTmdbCacheEntries(Object.fromEntries(memoryCache));
-	memoryCache.clear();
-	for (const [key, entry] of Object.entries(result)) memoryCache.set(key, entry);
+	const entries: Record<string, unknown> = {};
+	memoryCache.forEach((entry, key) => {
+		entries[key] = entry;
+	});
+	const result = pruneTmdbCacheEntries(entries);
+	replaceMemoryCache(result);
 	return result;
+}
+
+function replaceMemoryCache(entries: Record<string, TmdbCacheEntry>): void {
+	memoryCache.clear();
+	for (const key of Object.keys(entries)) {
+		memoryCache.set(key, entries[key]!);
+	}
 }
 
 export function setTmdbCachePersistCallback(cb: () => void): void {
