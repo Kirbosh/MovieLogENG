@@ -12,23 +12,7 @@ An Obsidian plugin for tracking your movie and TV series watching history. Fetch
 
 ## Installation
 
-### Method 1: Install from Obsidian Community Plugins (Recommended)
-
-1. Open Obsidian → Settings → Community Plugins → Browse
-2. Search for "MovieLog"
-3. Click Install and Enable
-
-### Method 2: Manual Installation
-
-1. Download the latest `main.js`, `manifest.json`, and `styles.css` from this fork's [Releases](https://github.com/Kirbosh/MovieLogENG/releases)
-2. Create the plugin directory in your Obsidian vault:
-   ```
-   {your vault}/.obsidian/plugins/movielog/
-   ```
-3. Copy the three downloaded files into that directory
-4. Open Obsidian → Settings → Community Plugins → Enable MovieLog
-
-### Method 3: Build from Source
+### Method 1: Build from Source (Recommended for This Fork)
 
 ```bash
 # Clone the repository
@@ -36,7 +20,7 @@ git clone https://github.com/Kirbosh/MovieLogENG.git
 cd MovieLogENG
 
 # Install dependencies
-npm install
+npm ci
 
 # Build
 npm run build
@@ -44,6 +28,12 @@ npm run build
 # Copy to your Obsidian vault
 cp main.js manifest.json styles.css /path/to/your/vault/.obsidian/plugins/movielog/
 ```
+
+Restart Obsidian, then open Settings → Community Plugins and enable MovieLog.
+
+### Method 2: Install Release Files
+
+When this fork publishes a release, download `main.js`, `manifest.json`, and `styles.css` from [Releases](https://github.com/Kirbosh/MovieLogENG/releases), copy them to `{your vault}/.obsidian/plugins/movielog/`, restart Obsidian, and enable MovieLog under Community Plugins.
 
 ## Configuration
 
@@ -65,7 +55,7 @@ MovieLog currently supports Obsidian desktop only. Mobile has not been tested an
 ### Add Movie Record
 
 1. Press `Ctrl+P` (`Cmd+P` on macOS) to open the command palette
-2. Type `MovieLog: Add Movie Record`
+2. Type `MovieLog: Add movie record`
 3. Enter the movie name and search
 4. Select the movie from the result list
 5. A Markdown file with complete information is auto-generated
@@ -73,7 +63,7 @@ MovieLog currently supports Obsidian desktop only. Mobile has not been tested an
 
 ### Add TV Series Record
 
-1. Open the command palette, type `MovieLog: Add TV Series Record`
+1. Open the command palette, type `MovieLog: Add TV show record`
 2. Search for the TV series name
 3. After selecting the series, choose the season to record
 4. A file with series information and episode list is auto-generated
@@ -82,7 +72,7 @@ MovieLog currently supports Obsidian desktop only. Mobile has not been tested an
 ### View Card Wall
 
 1. Click the movie icon in the left sidebar
-2. Or use the command palette and type `MovieLog: Open Card Wall`
+2. Or use the command palette and type `MovieLog: Open card wall`
 3. Browse all watch records, click a card to jump to the corresponding file
 
 ## License
