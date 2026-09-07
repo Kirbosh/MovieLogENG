@@ -51,10 +51,15 @@ jobs:
             CHANGELOG="Release $TAG_NAME"
           fi
 
-          gh release create "$TAG_NAME" \
-            --title "$TAG_NAME" \
-            --notes "$CHANGELOG" \
-            main.js manifest.json styles.css
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release edit "$TAG_NAME" \
+              --title "$TAG_NAME" \
+              --notes "$CHANGELOG"
+          else
+            gh release create "$TAG_NAME" \
+              --title "$TAG_NAME" \
+              --notes "$CHANGELOG"
+          fi
 
       - name: Upload to release
         env:
@@ -62,3 +67,4 @@ jobs:
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
           gh release upload "$TAG_NAME" main.js manifest.json styles.css --clobber
+
