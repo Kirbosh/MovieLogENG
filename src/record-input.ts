@@ -50,7 +50,7 @@ export function parseLocalDate(value: string): Date | null {
 export function validateRecordForm(form: RecordFormInput): RecordFormValidation {
 	const watchDate = form.watchDate.trim();
 	if (!parseLocalDate(watchDate)) {
-		return { ok: false, message: '请输入有效的观看日期（YYYY-MM-DD）' };
+		return { ok: false, message: 'Enter a valid watch date (YYYY-MM-DD).' };
 	}
 
 	const ratingValue = form.rating.trim();
@@ -58,7 +58,7 @@ export function validateRecordForm(form: RecordFormInput): RecordFormValidation 
 	if (ratingValue) {
 		const parsed = Number(ratingValue);
 		if (!Number.isFinite(parsed) || parsed < 0 || parsed > 10) {
-			return { ok: false, message: '评分必须是 0 到 10 之间的数字' };
+			return { ok: false, message: 'The rating must be a number from 0 to 10.' };
 		}
 		rating = Math.round(parsed * 10) / 10;
 	}

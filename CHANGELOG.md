@@ -1,78 +1,86 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Converted the complete user interface, commands, notices, generated Markdown templates, documentation, and test suite to English.
+- Changed the default TMDB metadata language to English (`en-US`).
+- Kept parser compatibility with watch records created by the original Chinese version.
+
 ## [0.8.4] - 2026-07-28
 
-### 修复
+### Fixed
 
-- 校验观看日期与个人评分，使用本地日期，避免 UTC 时区导致日期写入错误
-- 修复空个人评分解析为 `NaN`、历史异常评分中断卡片墙渲染的问题
-- 修复个人评分为 0 时未正确保留的显示问题，现显示为 `0.0/10`
-- 修复电视剧不同季度及电影/剧集同 ID 的本地海报缓存冲突
-- 限制 TMDB 持久缓存大小并清理过期、畸形缓存数据
-- 使用电影/剧集专用搜索端点，避免较早搜索响应覆盖最新结果
+- Validated watch dates and personal ratings, and used local dates to prevent UTC timezone offsets from writing the wrong date.
+- Fixed empty personal ratings being parsed as `NaN` and malformed historical ratings interrupting card-wall rendering.
+- Fixed personal ratings of 0 not being preserved; they now display as `0.0/10`.
+- Fixed local poster-cache collisions between TV seasons and between movies and TV shows with the same ID.
+- Limited the persistent TMDB cache size and removed expired or malformed cache data.
+- Used dedicated movie and TV search endpoints and prevented older search responses from replacing newer results.
 
-### 优化
+### Changed
 
-- 新增记录解析、评分显示、表单校验、排序、海报与 TMDB 缓存的回归测试
-- Release 工作流改用 `npm ci`，并在发布前强制执行 lint 和 build
-- README 移除未实现的卡片大小设置，并明确仅支持桌面端
+- Added regression tests for record parsing, rating display, form validation, sorting, poster caching, and TMDB caching.
+- Changed the release workflow to use `npm ci` and require lint and build checks before publishing.
+- Removed the unimplemented card-size setting from the README and clarified that only desktop is supported.
 
 ## [0.8.3] - 2026-06-13
 
-### 修复
+### Fixed
 
-- 修正 `minAppVersion` 从 `1.6.0` 升级至 `1.7.2`，`workspace.revealLeaf()` 返回 `Promise<void>` 是 1.7.2 才引入的 API，修复 `obsidianmd/no-unsupported-api` 报错
+- Raised `minAppVersion` from `1.6.0` to `1.7.2` because `workspace.revealLeaf()` began returning `Promise<void>` in Obsidian 1.7.2, resolving the `obsidianmd/no-unsupported-api` error.
 
 ## [0.8.2] - 2026-06-13
 
-### 修复
+### Fixed
 
-- 修正 `minAppVersion` 从 `1.5.0` 升级至 `1.6.0`，`revealLeaf` 实际需要 1.6.0+
+- Raised `minAppVersion` from `1.5.0` to `1.6.0`, the actual minimum version required by `revealLeaf`.
 
 ## [0.8.1] - 2026-06-13
 
-### 修复
+### Fixed
 
-- 修复 `minAppVersion` 声明为 `0.15.0` 但使用了 `revealLeaf`、`openLinkText` 等较新 API 的问题，升级至 `1.5.0`
-- 修复多处 Promise 未 await 的警告（`activateCardWall`、`saveData`、`revealLeaf`）
-- 修复 async 回调传入期望 void 返回值的参数导致的类型警告
-- 修复 `loadData()` 和 `response.json` 的 unsafe `any` 赋值警告
-- 修复 `setTimeout`/`clearTimeout` 未使用 `window.` 前缀的 popout 窗口兼容性警告
-- ESLint 配置新增 `.opencode/` 忽略规则，消除无关文件误报
+- Raised `minAppVersion` from `0.15.0` to `1.5.0` because the plugin used newer APIs such as `revealLeaf` and `openLinkText`.
+- Fixed several unawaited Promise warnings in `activateCardWall`, `saveData`, and `revealLeaf`.
+- Fixed type warnings caused by passing async callbacks where a void return value was expected.
+- Fixed unsafe `any` assignment warnings involving `loadData()` and `response.json`.
+- Added the `window.` prefix to `setTimeout` and `clearTimeout` for pop-out window compatibility.
+- Added `.opencode/` to the ESLint ignore list to prevent unrelated files from being reported.
 
 ## [0.8.0] - 2026-06-13
 
-### 新增
+### Added
 
-- 海报本地缓存功能，支持将 TMDB 海报下载到本地 `_posters` 目录，避免每次加载都请求远程图片
-- 设置面板新增"启用海报缓存"开关
-- TMDB API 内存缓存 + data.json 持久化，减少重复 API 请求
-- `writingPaths` 机制：插件自身写入文件时跳过 `modify`/`create` 事件监听，避免无限刷新
-- 海报加载失败时的 fallback 显示，附带 TMDB 链接
+- Local poster caching in the `_posters` directory to avoid requesting remote images on every load.
+- An **Enable poster cache** toggle in the settings panel.
+- An in-memory TMDB API cache with persistence in `data.json`.
+- A `writingPaths` mechanism that skips `modify` and `create` event handling while the plugin writes files, preventing refresh loops.
+- A fallback display with a TMDB link when a poster fails to load.
 
-### 修复
+### Fixed
 
-- 添加电影记录后海报墙不自动刷新的问题（缺少 `vault.on('create')` 事件监听）
-- 本地海报文件不存在时海报墙显示"海报加载失败"的问题
-- `resolveLocalPosterUrl` 在文件缺失时返回无效路径导致 `<img>` 加载失败
-- `updateYearFileStats` 中无效的递减分支
+- Fixed the poster wall not refreshing after a movie record was added because the `vault.on('create')` listener was missing.
+- Fixed the poster wall showing “Poster unavailable” when a local poster file did not exist.
+- Fixed `resolveLocalPosterUrl` returning an invalid path for a missing file and causing the `<img>` element to fail.
+- Removed an invalid decrement branch from `updateYearFileStats`.
 
-### 优化
+### Changed
 
-- 卡片墙刷新增加 300ms 防抖，避免频繁渲染
-- 年份文件按 mtime 缓存 + 并行读取，大幅提升海报墙加载性能
-- `doRefresh` 拆分为 `loadAllRecords` + `renderFilteredView`，数据加载与渲染分离
-- `loadAllRecords` 中每个文件包裹 try/catch，单个文件损坏不影响整体
-- `refreshCards` 使用 `.catch()` 替代 `void`，异常不再静默丢失
-- 新增 `reportError` 工具函数统一错误处理，替代纯 `Notice` 的 catch 块
-- 开源协议更换为 MIT
-- Node.js 版本升级到 24.x
+- Added a 300 ms debounce to card-wall refreshes.
+- Cached year files by modification time and read them in parallel, substantially improving poster-wall load performance.
+- Split `doRefresh` into `loadAllRecords` and `renderFilteredView` to separate data loading from rendering.
+- Wrapped each file read in `loadAllRecords` with `try/catch` so one damaged file does not break the entire view.
+- Changed `refreshCards` to use `.catch()` so errors are no longer silently discarded.
+- Added a shared `reportError` helper to replace catch blocks that only showed a `Notice`.
+- Changed the open-source license to MIT.
+- Upgraded Node.js to version 24.x.
 
 ## [0.7.0] - 2026-06-13
 
-- 海报墙年份筛选功能
-- 竖向布局适配（窄面板自动切换）
-- 排序功能（按观看日期/标题/评分/上映日期）
-- 电影/剧集独立记录文件
-- 观看状态追踪（计划/正在/已看完/已弃剧）
-- 个人评分与观后感
+- Added year filtering to the poster wall.
+- Added a vertical layout for narrow panels.
+- Added sorting by watch date, title, rating, or release date.
+- Added separate record types for movies and TV seasons.
+- Added watch-status tracking: planned, watching, completed, and dropped.
+- Added personal ratings and reviews.

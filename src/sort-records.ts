@@ -30,7 +30,7 @@ function parseRecords(content: string): ParsedMarkdown {
 	const recordChunks = body.split(/(?=^## )/m).filter(chunk => chunk.trim());
 
 	const records: RecordWithDate[] = recordChunks.map((chunk, index) => {
-		const dateMatch = chunk.match(/\*\*完成日期\*\*:\s*(\d{4}-\d{2}-\d{2})?/);
+		const dateMatch = chunk.match(/\*\*(?:Completion date|\u5b8c\u6210\u65e5\u671f)\*\*:\s*(\d{4}-\d{2}-\d{2})?/);
 		return {
 			content: chunk.trim(),
 			watchDate: dateMatch?.[1] || '',

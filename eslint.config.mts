@@ -23,7 +23,7 @@ export default tseslint.config(
 	},
 	...obsidianmd.configs.recommended,
 	{
-		// 插件界面以中文为主，英文句首大小写规则会误报中文文案与缩写。
+		// Product names and compact UI labels do not always follow sentence-case heuristics.
 		rules: {
 			"obsidianmd/ui/sentence-case": "off"
 		}

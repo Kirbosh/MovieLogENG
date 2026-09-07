@@ -180,5 +180,5 @@ export function buildPosterUrl(posterPath: string | null, size: string = 'w342')
 
 export function getYear(item: TMDBSearchResult): string {
     const dateStr = item.release_date || item.first_air_date;
-    return dateStr ? dateStr.substring(0, 4) : '未知';
+    return dateStr ? dateStr.substring(0, 4) : 'Unknown';
 }

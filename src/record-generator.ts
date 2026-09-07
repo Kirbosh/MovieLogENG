@@ -23,29 +23,29 @@ export function generateMovieRecord(
 
     return `## 🎬 ${movie.title}
 
-${h('电影信息')}
+${h('Movie information')}
 
-![宣传海报|350](${posterUrl})
+![Poster|350](${posterUrl})
 
-- **类型**: ${genres.join('、') || '未知'}
+- **Genres**: ${genres.join(', ') || 'Unknown'}
 - **TMDB ID**: ${movie.id}
-- **TMDB链接**: ${tmdbLink}
-- **评分**: ★ ${movie.vote_average?.toFixed(1) || '?'}/10（${movie.vote_count || 0}人）
-- **片长**: ${duration}分钟
-- **上映日期**: ${movie.release_date || '未知'}
-- **剧情简介**: ${movie.overview || '暂无简介'}
+- **TMDB link**: ${tmdbLink}
+- **Rating**: ★ ${movie.vote_average?.toFixed(1) || '?'}/10 (${movie.vote_count || 0} votes)
+- **Runtime**: ${duration} minutes
+- **Release date**: ${movie.release_date || 'Unknown'}
+- **Synopsis**: ${movie.overview || 'No synopsis available.'}
 
-${h('我的观看记录')}
+${h('My watch log')}
 
-- **记录日期**: ${today}
-- **完成日期**: ${status === WatchStatus.COMPLETED ? watchDate : ''}
-- **我的评分**: ${userInput?.rating ?? ''}
-- **观看平台**: ${userInput?.platform || ''}
-- **观看状态**: ${WATCH_STATUS_LABELS[status]}
+- **Date added**: ${today}
+- **Completion date**: ${status === WatchStatus.COMPLETED ? watchDate : ''}
+- **My rating**: ${userInput?.rating ?? ''}
+- **Watch platform**: ${userInput?.platform || ''}
+- **Watch status**: ${WATCH_STATUS_LABELS[status]}
 
-${h('观后感')}
+${h('Review')}
 
-（请在此处填写你的观后感）
+(Write your review here.)
 
 ---
 
@@ -75,32 +75,32 @@ export function generateTVRecord(
 
     return `## 📺 ${show.name} - ${season.name}
 
-${h('本季信息')}
+${h('Season information')}
 
-![宣传海报|350](${posterUrl})
+![Poster|350](${posterUrl})
 
-- **类型**: ${genres.join('、') || '未知'}
+- **Genres**: ${genres.join(', ') || 'Unknown'}
 - **TMDB ID**: ${show.id}
-- **TMDB链接**: ${tmdbLink}
-- **剧评分**: ★ ${show.vote_average?.toFixed(1) || '?'}/10（${show.vote_count || 0}人）
-- **季评分**: ★ ${seasonRating}/10
-- **季名**: ${season.name}
-- **集数**: ${episodeCount}集
-- **播出年份**: ${year || '未知'}
-- **本季简介**: ${season.overview || show.overview || '暂无简介'}
+- **TMDB link**: ${tmdbLink}
+- **Show rating**: ★ ${show.vote_average?.toFixed(1) || '?'}/10 (${show.vote_count || 0} votes)
+- **Season rating**: ★ ${seasonRating}/10
+- **Season name**: ${season.name}
+- **Episode count**: ${episodeCount}
+- **Air year**: ${year || 'Unknown'}
+- **Season overview**: ${season.overview || show.overview || 'No synopsis available.'}
 
-${h('我的观看记录')}
+${h('My watch log')}
 
-- **记录日期**: ${today}
-- **完成日期**: ${status === WatchStatus.COMPLETED ? watchDate : ''}
-- **观看进度**: ${status === WatchStatus.COMPLETED ? episodeCount : 0}/${episodeCount}集
-- **我的评分**: ${userInput?.rating ?? ''}
-- **观看平台**: ${userInput?.platform || ''}
-- **观看状态**: ${WATCH_STATUS_LABELS[status]}
+- **Date added**: ${today}
+- **Completion date**: ${status === WatchStatus.COMPLETED ? watchDate : ''}
+- **Watch progress**: ${status === WatchStatus.COMPLETED ? episodeCount : 0}/${episodeCount} episodes
+- **My rating**: ${userInput?.rating ?? ''}
+- **Watch platform**: ${userInput?.platform || ''}
+- **Watch status**: ${WATCH_STATUS_LABELS[status]}
 
-${h('本季观感')}
+${h('Season review')}
 
-（请在此处填写你的观后感）
+(Write your review here.)
 
 ---
 
@@ -129,7 +129,7 @@ total_movies: ${contentType === 'movie' ? 1 : 0}
 total_tv_shows: ${contentType === 'tv' ? 1 : 0}
 ---
 
-# ${year}年观影记录
+# ${year} Watch log
 
 ${content}
 `;
@@ -143,14 +143,16 @@ ${content}
 	}
 
     if (!(file instanceof TFile)) {
-        throw new Error(`路径不是文件: ${filePath}`);
+        throw new Error(`Path is not a file: ${filePath}`);
     }
 
     const existingContent = await app.vault.read(file);
     const isMovie = contentType === 'movie';
     const updatedContent = updateYearFileStats(existingContent, isMovie);
 
-    const insertAfter = `# ${year}年观影记录\n\n`;
+    const englishHeader = `# ${year} Watch log\n\n`;
+    const legacyHeader = `# ${year}\u5e74\u89c2\u5f71\u8bb0\u5f55\n\n`;
+    const insertAfter = updatedContent.includes(englishHeader) ? englishHeader : legacyHeader;
     const insertIndex = updatedContent.indexOf(insertAfter);
     let newContent: string;
     if (insertIndex !== -1) {

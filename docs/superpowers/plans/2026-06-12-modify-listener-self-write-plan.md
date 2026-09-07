@@ -1,24 +1,22 @@
-# modify 监听器排除自身写入实现计划
+# Excluding Plugin Writes from the Modify Listener — Implementation Plan
 
-> **面向 AI 代理的工作者：** 必需子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务实现此计划。步骤使用复选框（`- [ ]`）语法来跟踪进度。
+> **For AI agents:** Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task by task. Track progress with `- [ ]` checkboxes.
 
-**目标：** 插件自身写入 `{year}.md` 时不触发 `modify` 监听器的 `refreshCardWall`，避免无意义的全量重解析。
+**Goal:** Prevent the `modify` listener from calling `refreshCardWall` when the plugin writes `{year}.md`, avoiding an unnecessary full reparse.
 
-**架构：** 插件类维护 `Set<string>` 记录正在写入的文件路径，写入前 add、写入后（finally）delete。监听器命中则跳过。
+**Architecture:** The plugin class keeps a `Set<string>` of paths currently being written. Add a path before the write, remove it in `finally`, and skip matching paths in the listener.
 
-**技术栈：** TypeScript, Obsidian Plugin API
+**Technology:** TypeScript and the Obsidian Plugin API.
 
 ---
 
-### 任务 1：`record-generator.ts` — `appendToYearFile` 和 `createRecordFile` 签名扩展
+### Task 1: Extend record-writing functions
 
-**文件：**
-- 修改：`src/record-generator.ts:127-178`（`appendToYearFile`）
-- 修改：`src/record-generator.ts:192-224`（`createRecordFile`）
+**File:** `src/record-generator.ts`
 
-- [ ] **步骤 1：`appendToYearFile` 新增 `writingPaths` 参数，用 `try/finally` 包裹 `vault.modify`**
+- [ ] **Step 1: Add `writingPaths` to `appendToYearFile` and wrap `vault.modify`**
 
-将函数签名从：
+Change the function signature from:
 
 ```ts
 export async function appendToYearFile(
@@ -30,7 +28,7 @@ export async function appendToYearFile(
 ): Promise<TFile> {
 ```
 
-改为：
+to:
 
 ```ts
 export async function appendToYearFile(
@@ -43,159 +41,88 @@ export async function appendToYearFile(
 ): Promise<TFile> {
 ```
 
-将 `src/record-generator.ts:176` 的：
+Replace the direct write:
 
 ```ts
+await app.vault.modify(file, sortedContent);
+return file;
+```
+
+with:
+
+```ts
+writingPaths.add(file.path);
+try {
     await app.vault.modify(file, sortedContent);
-    return file;
+} finally {
+    writingPaths.delete(file.path);
+}
+return file;
 ```
 
-改为：
+- [ ] **Step 2: Pass the set through any intermediate record-creation helper**
 
-```ts
-    writingPaths.add(file.path);
-    try {
-        await app.vault.modify(file, sortedContent);
-    } finally {
-        writingPaths.delete(file.path);
-    }
-    return file;
-```
-
-- [ ] **步骤 2：`createRecordFile` 新增 `writingPaths` 参数并透传**
-
-将函数签名从：
-
-```ts
-export async function createRecordFile(
-    app: App,
-    content: string,
-    folder: string,
-    fileName: string,
-    watchDate?: string | null,
-    contentType?: 'movie' | 'tv'
-): Promise<TFile> {
-```
-
-改为：
-
-```ts
-export async function createRecordFile(
-    app: App,
-    content: string,
-    folder: string,
-    fileName: string,
-    watchDate?: string | null,
-    contentType?: 'movie' | 'tv',
-    writingPaths?: Set<string>
-): Promise<TFile> {
-```
-
-将 `src/record-generator.ts:200-201` 的：
-
-```ts
-    if (watchDate !== undefined && contentType) {
-        return appendToYearFile(app, content, folder, watchDate, contentType);
-    }
-```
-
-改为：
-
-```ts
-    if (watchDate !== undefined && contentType) {
-        return appendToYearFile(app, content, folder, watchDate, contentType, writingPaths ?? new Set());
-    }
-```
+If `createRecordFile` remains in the implementation, add an optional `writingPaths?: Set<string>` parameter and pass `writingPaths ?? new Set()` to `appendToYearFile`.
 
 ---
 
-### 任务 2：`main.ts` — 插件类新增字段、监听器加跳过、调用方传参
+### Task 2: Update the plugin class and listener
 
-**文件：**
-- 修改：`src/main.ts:91-93`（插件类字段）
-- 修改：`src/main.ts:183-189`（modify 监听器）
-- 修改：`src/main.ts:129`（电影记录创建调用）
-- 修改：`src/main.ts:164`（剧集记录创建调用）
+**File:** `src/main.ts`
 
-- [ ] **步骤 1：插件类新增 `writingPaths` 字段**
-
-在 `src/main.ts:92` `settings: PluginSettings;` 下方新增一行：
+- [ ] **Step 1: Add the plugin field**
 
 ```ts
-    private writingPaths = new Set<string>();
+private writingPaths = new Set<string>();
 ```
 
-- [ ] **步骤 2：监听器加跳过判断**
+- [ ] **Step 2: Skip paths that the plugin is writing**
 
-在 `src/main.ts:184` 行（`if (file instanceof TFile && file.extension === 'md') {`）之后新增：
+Add the guard immediately inside the Markdown-file branch:
 
 ```ts
-                        if (this.writingPaths.has(file.path)) return;
+this.app.vault.on('modify', (file) => {
+    if (file instanceof TFile && file.extension === 'md') {
+        if (this.writingPaths.has(file.path)) return;
+        const saveFolder = this.settings.defaultSaveFolder.replace(/^\/|\/$/g, '');
+        if (file.path.startsWith(saveFolder + '/')) {
+            this.refreshCardWall();
+        }
+    }
+});
 ```
 
-完整上下文：
+- [ ] **Step 3: Pass `writingPaths` when creating a movie record**
 
-```ts
-                this.app.vault.on('modify', (file) => {
-                    if (file instanceof TFile && file.extension === 'md') {
-                        if (this.writingPaths.has(file.path)) return;
-                        const saveFolder = this.settings.defaultSaveFolder.replace(/^\/|\/$/g, '');
-                        if (file.path.startsWith(saveFolder + '/')) {
-                            this.refreshCardWall();
-                        }
-                    }
-                })
-```
+The movie-record path must pass `this.writingPaths` to `appendToYearFile` or the relevant intermediate helper.
 
-- [ ] **步骤 3：电影记录创建调用传入 `writingPaths`**
+- [ ] **Step 4: Pass `writingPaths` when creating a TV record**
 
-将 `src/main.ts:129` 的：
-
-```ts
-                                const file = await createRecordFile(this.app, content, this.settings.defaultSaveFolder, fileName, userInput.watchDate || null, 'movie');
-```
-
-改为：
-
-```ts
-                                const file = await createRecordFile(this.app, content, this.settings.defaultSaveFolder, fileName, userInput.watchDate || null, 'movie', this.writingPaths);
-```
-
-- [ ] **步骤 4：剧集记录创建调用传入 `writingPaths`**
-
-将 `src/main.ts:164` 的：
-
-```ts
-                                        const file = await createRecordFile(this.app, content, this.settings.defaultSaveFolder, fileName, userInput.watchDate || null, 'tv');
-```
-
-改为：
-
-```ts
-                                        const file = await createRecordFile(this.app, content, this.settings.defaultSaveFolder, fileName, userInput.watchDate || null, 'tv', this.writingPaths);
-```
+The TV-record path must pass the same set.
 
 ---
 
-### 任务 3：验证
+### Task 3: Verification
 
-- [ ] **步骤 1：类型检查**
+- [ ] **Step 1: Build and type-check**
 
 ```bash
 npm run build
 ```
-预期：tsc 无错误，esbuild 成功产出 `main.js`。
 
-- [ ] **步骤 2：Lint 检查**
+Expected: TypeScript reports no errors and esbuild outputs `main.js`.
+
+- [ ] **Step 2: Lint**
 
 ```bash
 npm run lint
 ```
-预期：无 lint 错误。
 
-- [ ] **步骤 3：Commit**
+Expected: no ESLint errors.
+
+- [ ] **Step 3: Commit**
 
 ```bash
 git add src/main.ts src/record-generator.ts
-git commit -m "fix: modify listener skips self-writes to year files"
+git commit -m "fix: skip self-writes in the year-file modify listener"
 ```

@@ -20,6 +20,37 @@ export interface ParsedRecord {
 	review: string | null;
 }
 
+const SECTIONS = {
+	movieInformation: ['Movie information', '\u7535\u5f71\u4fe1\u606f'],
+	seasonInformation: ['Season information', '\u672c\u5b63\u4fe1\u606f'],
+	watchLog: ['My watch log', '\u6211\u7684\u89c2\u770b\u8bb0\u5f55'],
+	review: ['Review', '\u89c2\u540e\u611f'],
+	seasonReview: ['Season review', '\u672c\u5b63\u89c2\u611f']
+} as const;
+
+const FIELDS = {
+	genres: ['Genres', '\u7c7b\u578b'],
+	tmdbLink: ['TMDB link', 'TMDB\u94fe\u63a5'],
+	rating: ['Rating', '\u8bc4\u5206'],
+	showRating: ['Show rating', '\u5267\u8bc4\u5206'],
+	releaseDate: ['Release date', '\u4e0a\u6620\u65e5\u671f'],
+	airYear: ['Air year', '\u64ad\u51fa\u5e74\u4efd'],
+	runtime: ['Runtime', '\u7247\u957f'],
+	completionDate: ['Completion date', '\u5b8c\u6210\u65e5\u671f'],
+	watchStatus: ['Watch status', '\u89c2\u770b\u72b6\u6001'],
+	personalRating: ['My rating', '\u6211\u7684\u8bc4\u5206'],
+	synopsis: ['Synopsis', '\u5267\u60c5\u7b80\u4ecb'],
+	seasonOverview: ['Season overview', '\u672c\u5b63\u7b80\u4ecb'],
+	watchPlatform: ['Watch platform', '\u89c2\u770b\u5e73\u53f0'],
+	seasonName: ['Season name', '\u5b63\u540d'],
+	episodeCount: ['Episode count', '\u96c6\u6570']
+} as const;
+
+interface ParsedSection {
+	title: string;
+	content: string;
+}
+
 export function parseYearFileContent(content: string, year: string): ParsedRecord[] {
 	const records: ParsedRecord[] = [];
 	const recordRegex = /## (.+?)\n\n([\s\S]*?)(?=\n## |$)/g;
@@ -29,47 +60,53 @@ export function parseYearFileContent(content: string, year: string): ParsedRecor
 		const rawTitle = match[1] || '';
 		const title = rawTitle.replace(/^[🎬📺]\s*/u, '');
 		const block = normalizeSectionHeaders(match[2] || '');
-		const infoSectionMatch = block.match(/### (电影信息|本季信息)\n\n([\s\S]*?)(?=\n### |$)/);
-		if (!infoSectionMatch) continue;
+		const infoSection = findSection(block, [...SECTIONS.movieInformation, ...SECTIONS.seasonInformation]);
+		if (!infoSection) continue;
 
-		const infoTitle = infoSectionMatch[1] || '';
-		const infoContent = infoSectionMatch[2] || '';
-		const type: 'movie' | 'tv' = infoTitle === '电影信息' ? 'movie' : 'tv';
-		const posterMatch = infoContent.match(/!\[宣传海报\|\d+\]\((.*?)\)/);
-		const fields = parseFields(infoContent);
+		const type: 'movie' | 'tv' = matchesLabel(infoSection.title, SECTIONS.movieInformation) ? 'movie' : 'tv';
+		const posterMatch = infoSection.content.match(/!\[(?:Poster|\u5ba3\u4f20\u6d77\u62a5)\|\d+\]\((.*?)\)/);
+		const fields = parseFields(infoSection.content);
 		const tmdbId = parseInt(fields['TMDB ID'] || '0', 10);
 		if (!title || tmdbId === 0) continue;
 
-		const watchSectionMatch = block.match(/### 我的观看记录\n\n([\s\S]*?)(?=\n### |$)/);
-		const watchFields = parseFields(watchSectionMatch?.[1] || '');
-		const reviewMatch = block.match(/### (?:观后感|本季观感)\n\n([\s\S]*?)(?=\n---|$)/);
-		const tmdbRatingText = type === 'movie' ? fields['评分'] : fields['剧评分'];
+		const watchSection = findSection(block, SECTIONS.watchLog);
+		const watchFields = parseFields(watchSection?.content || '');
+		const reviewSection = findSection(block, [...SECTIONS.review, ...SECTIONS.seasonReview]);
+		const tmdbRatingText = type === 'movie'
+			? getField(fields, FIELDS.rating)
+			: getField(fields, FIELDS.showRating);
 
 		const record: ParsedRecord = {
 			type,
-			title: title.replace(/\s*\(.*?\)\s*$/, '').replace(/\s*-\s*第\d+季\s*$/, '').trim(),
+			title: title
+				.replace(/\s*\(.*?\)\s*$/, '')
+				.replace(/\s*-\s*Season\s+\d+\s*$/i, '')
+				.replace(/\s*-\s*\u7b2c\d+\u5b63\s*$/, '')
+				.trim(),
 			tmdb_id: tmdbId,
 			poster: posterMatch?.[1] || '',
-			genres: fields['类型'] ? fields['类型'].split('、').map(genre => genre.trim()).filter(Boolean) : [],
-			tmdb_rating: tmdbRatingText ? parseFloat(tmdbRatingText.replace(/[★☆\s]/g, '').split('/')[0] || '0') : 0,
-			release_date: type === 'movie' ? (fields['上映日期'] || '') : (fields['播出年份'] || ''),
-			tmdb_link: fields['TMDB链接'] || '',
-			duration: type === 'movie' ? parseInt(fields['片长'] || '0', 10) : 0,
-			watch_date: watchFields['完成日期'] || null,
-			watch_status: watchFields['观看状态'] || '计划观看',
-			personal_rating: parseOptionalRating(watchFields['我的评分']),
+			genres: splitGenres(getField(fields, FIELDS.genres)),
+			tmdb_rating: parseTmdbRating(tmdbRatingText),
+			release_date: type === 'movie'
+				? getField(fields, FIELDS.releaseDate)
+				: getField(fields, FIELDS.airYear),
+			tmdb_link: getField(fields, FIELDS.tmdbLink),
+			duration: type === 'movie' ? parseInt(getField(fields, FIELDS.runtime) || '0', 10) : 0,
+			watch_date: getField(watchFields, FIELDS.completionDate) || null,
+			watch_status: getField(watchFields, FIELDS.watchStatus) || 'Planned',
+			personal_rating: parseOptionalRating(getField(watchFields, FIELDS.personalRating)),
 			year,
-			overview: (fields['剧情简介'] || fields['本季简介'] || '').trim(),
-			watch_platform: watchFields['观看平台'] || null,
-			review: reviewMatch?.[1]?.trim() || null
+			overview: (getField(fields, FIELDS.synopsis) || getField(fields, FIELDS.seasonOverview)).trim(),
+			watch_platform: getField(watchFields, FIELDS.watchPlatform) || null,
+			review: reviewSection?.content.trim() || null
 		};
 
 		if (type === 'tv') {
-			const seasonName = fields['季名'] || '';
+			const seasonName = getField(fields, FIELDS.seasonName);
 			const seasonNumber = seasonName.match(/(\d+)/);
 			record.season_number = seasonNumber ? parseInt(seasonNumber[1] || '0', 10) : 0;
 			record.season_name = seasonName;
-			record.episode_count = parseInt(fields['集数'] || '0', 10);
+			record.episode_count = parseInt(getField(fields, FIELDS.episodeCount) || '0', 10);
 		}
 
 		records.push(record);
@@ -88,6 +125,25 @@ function parseFields(content: string): Record<string, string> {
 	return fields;
 }
 
+function getField(fields: Record<string, string>, labels: readonly string[]): string {
+	for (const label of labels) {
+		if (fields[label] !== undefined) return fields[label];
+	}
+	return '';
+}
+
+function matchesLabel(value: string, labels: readonly string[]): boolean {
+	return labels.some(label => label === value);
+}
+
+function splitGenres(value: string): string[] {
+	return value.split(/,\s*|\u3001/).map(genre => genre.trim()).filter(Boolean);
+}
+
+function parseTmdbRating(value: string): number {
+	return value ? parseFloat(value.replace(/[★☆\s]/g, '').split('/')[0] || '0') : 0;
+}
+
 function parseOptionalRating(value: string | undefined): number | null {
 	const trimmed = value?.trim();
 	if (!trimmed) return null;
@@ -95,9 +151,22 @@ function parseOptionalRating(value: string | undefined): number | null {
 	return Number.isFinite(rating) ? rating : null;
 }
 
+function findSection(block: string, titles: readonly string[]): ParsedSection | null {
+	const alternatives = titles.map(escapeRegExp).join('|');
+	const match = block.match(new RegExp(`### (${alternatives})\\n\\n([\\s\\S]*?)(?=\\n### |\\n---|$)`));
+	if (!match) return null;
+	return { title: match[1] || '', content: match[2] || '' };
+}
+
 function normalizeSectionHeaders(block: string): string {
+	const titles = Object.values(SECTIONS).flat();
+	const alternatives = titles.map(escapeRegExp).join('|');
 	return block.replace(
-		/^(?:> )?\*\*(电影信息|本季信息|我的观看记录|观后感|本季观感)\*\*$/gm,
+		new RegExp(`^(?:> )?\\*\\*(${alternatives})\\*\\*$`, 'gm'),
 		'### $1'
 	);
+}
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

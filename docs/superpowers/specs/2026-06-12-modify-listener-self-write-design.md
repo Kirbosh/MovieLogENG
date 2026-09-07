@@ -1,28 +1,28 @@
-# modify 监听器排除自身写入设计
+# Excluding Plugin Writes from the Modify Listener — Design
 
-> 对应 review 文档 `02-stability.md` 中的 `02-02`
+> Corresponds to item `02-02` in the `02-stability.md` review document.
 
-## 问题
+## Problem
 
-`src/main.ts:183-191` 的 `modify` 监听器未排除插件自身写入的 `{year}.md`。每次 `record-generator.ts:176` 调用 `vault.modify` 写回年份文件，都会触发 `refreshCardWall`，进而触发全量重解析。用户每次添加一条记录都会触发一次全库重读。
+The `modify` listener in `src/main.ts` does not distinguish edits made by the plugin itself to `{year}.md`. Each call to `vault.modify` in `record-generator.ts` triggers `refreshCardWall`, causing every year file to be parsed again. Adding one record therefore causes an unnecessary full-vault reread.
 
-## 方案：路径 Set 排除法
+## Solution: path-set exclusion
 
-插件维护一个 `Set<string>`，记录"插件正在写入的文件路径"。写入前 add，写入后（finally）delete。监听器中检查命中则跳过。
+The plugin maintains a `Set<string>` containing paths it is currently writing. Add the path before a write, remove it in `finally`, and make the listener skip paths found in the set.
 
-## 改动范围
+## Scope
 
-2 个文件，4 处修改。
+Two files and four changes.
 
-### 1. `src/main.ts` — 插件类新增字段
+### 1. Add a field to the plugin class in `src/main.ts`
 
 ```ts
 private writingPaths = new Set<string>();
 ```
 
-### 2. `src/record-generator.ts` — `appendToYearFile` 签名扩展
+### 2. Extend `appendToYearFile` in `src/record-generator.ts`
 
-新增 `writingPaths: Set<string>` 参数，在 `vault.modify` 前后用 `try/finally` 标记：
+Add a `writingPaths: Set<string>` parameter and mark the path around `vault.modify`:
 
 ```ts
 export async function appendToYearFile(
@@ -33,7 +33,7 @@ export async function appendToYearFile(
     contentType: 'movie' | 'tv',
     writingPaths: Set<string>
 ): Promise<TFile> {
-    // ... 现有逻辑不变 ...
+    // Existing logic remains unchanged.
     writingPaths.add(file.path);
     try {
         await app.vault.modify(file, sortedContent);
@@ -44,7 +44,7 @@ export async function appendToYearFile(
 }
 ```
 
-### 3. `src/main.ts` — 监听器加跳过判断
+### 3. Skip self-writes in the listener in `src/main.ts`
 
 ```ts
 this.app.vault.on('modify', (file) => {
@@ -58,30 +58,29 @@ this.app.vault.on('modify', (file) => {
 });
 ```
 
-### 4. `src/main.ts` — 调用方传参
+### 4. Pass the set from the caller
 
-`createRecordFile` 调用 `appendToYearFile` 时传入 `this.writingPaths`。
+Calls to `appendToYearFile` pass `this.writingPaths`.
 
-## 数据流
+## Data flow
 
-```
-添加记录 → createRecordFile(writingPaths)
-  → appendToYearFile(writingPaths)
-    → writingPaths.add(file.path)
-    → vault.modify({year}.md)  ←── modify 事件触发
-      → 监听器检查 writingPaths.has(file.path) → true → 跳过
-    → writingPaths.delete(file.path) (finally)
-```
-
-用户手动编辑 `{year}.md`：
-
-```
-用户编辑 → vault 自动保存 → modify 事件触发
-  → 监听器检查 writingPaths.has(file.path) → false → refreshCardWall
+```text
+Add record → appendToYearFile(writingPaths)
+  → writingPaths.add(file.path)
+  → vault.modify({year}.md) → modify event fires
+    → listener sees writingPaths.has(file.path) === true → skip
+  → writingPaths.delete(file.path) in finally
 ```
 
-## 边界情况
+When a user edits a year file manually:
 
-- **异常路径**：`vault.modify` 抛异常时，`finally` 保证路径被移除，不会永久阻塞
-- **并发写入**：Set 天然支持，两个 `appendToYearFile` 同时写不同文件互不干扰
-- **用户编辑同一文件**：插件写入完成后路径已从 Set 移除，用户紧接着编辑同一文件不会被误跳过
+```text
+User edit → vault saves → modify event fires
+  → writingPaths.has(file.path) === false → refreshCardWall
+```
+
+## Edge cases
+
+- **Write failure:** `finally` removes the path even if `vault.modify` throws, so the file never remains permanently excluded.
+- **Concurrent writes:** The set can track multiple distinct paths independently.
+- **Immediate user edit:** The plugin removes the path as soon as its write completes, so a following user edit is not skipped.

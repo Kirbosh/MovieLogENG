@@ -31,43 +31,43 @@ class AddRecordModal extends Modal {
 
     onOpen() {
         const { contentEl } = this;
-        contentEl.createEl('h2', { text: '添加观影记录' });
+        contentEl.createEl('h2', { text: 'Add watch record' });
 
         new Setting(contentEl)
-            .setName('观看日期')
-            .setDesc('观看日期（YYYY-MM-DD）')
+            .setName('Watch date')
+            .setDesc('Date watched (YYYY-MM-DD)')
             .addText(text => text
                 .setValue(this.result.watchDate || '')
                 .onChange(value => this.result.watchDate = value));
 
         new Setting(contentEl)
-            .setName('我的评分')
-            .setDesc('评分（0-10）')
+            .setName('My rating')
+            .setDesc('Rating from 0 to 10')
             .addText(text => text
                 .setValue(this.result.rating || '')
                 .onChange(value => this.result.rating = value));
 
         new Setting(contentEl)
-            .setName('观看平台')
-            .setDesc('观看平台（如：Netflix、爱奇艺）')
+            .setName('Watch platform')
+            .setDesc('Where you watched it (for example, Netflix or a cinema)')
             .addText(text => text
                 .setValue(this.result.platform || '')
                 .onChange(value => this.result.platform = value));
 
         new Setting(contentEl)
-            .setName('观看状态')
-            .setDesc('当前观看状态')
+            .setName('Watch status')
+            .setDesc('Current watch status')
             .addDropdown(dropdown => dropdown
-				.addOption(WatchStatus.PLANNED, '计划观看')
-				.addOption(WatchStatus.WATCHING, '正在观看')
-				.addOption(WatchStatus.COMPLETED, '已看完')
-				.addOption(WatchStatus.DROPPED, '已弃剧')
+				.addOption(WatchStatus.PLANNED, 'Planned')
+				.addOption(WatchStatus.WATCHING, 'Watching')
+				.addOption(WatchStatus.COMPLETED, 'Completed')
+				.addOption(WatchStatus.DROPPED, 'Dropped')
 				.setValue(this.result.status)
 				.onChange(value => this.result.status = value as WatchStatus));
 
         new Setting(contentEl)
 			.addButton(btn => btn
-				.setButtonText('确认添加')
+				.setButtonText('Add record')
 				.setCta()
 				.onClick(() => {
 					const validation = validateRecordForm(this.result);
@@ -104,13 +104,13 @@ export default class MovieLogPlugin extends Plugin {
 		setTmdbCachePersistCallback(() => {
 			const data = { ...this.settings, _tmdbCache: getTmdbCacheForPersist() };
 			void this.saveData(data).catch((error) => {
-				console.error('[MovieLog] 保存 TMDB 缓存失败:', error);
+				console.error('[MovieLog] Failed to save the TMDB cache:', error);
 			});
 		});
 
         this.addCommand({
             id: 'open-wall',
-            name: '打开卡片墙',
+            name: 'Open card wall',
             callback: () => {
                 void this.activateCardWall();
             }
@@ -118,16 +118,16 @@ export default class MovieLogPlugin extends Plugin {
 
         this.addCommand({
             id: 'add-movie',
-            name: '添加电影记录',
+            name: 'Add movie record',
             callback: () => {
                 if (!this.settings.tmdbApiKey) {
-                    new Notice('请先在 MovieLog 设置中配置 TMDB API Key');
+                    new Notice('Configure your TMDB API key in MovieLog settings first.');
                     return;
                 }
                 new SearchModal(this.app, this.settings.tmdbApiKey, this.settings.tmdbLanguage, 'movie', (result) => {
                     void (async () => {
                         try {
-                            new Notice('正在获取电影详情...');
+                            new Notice('Fetching movie details...');
                             const details = await getMovieDetails(result.id, this.settings.tmdbApiKey, this.settings.tmdbLanguage);
                             new AddRecordModal(this.app, (userInput) => {
                                 void (async () => {
@@ -141,22 +141,22 @@ export default class MovieLogPlugin extends Plugin {
 											);
                                             if (localPath) {
                                                 finalContent = content.replace(
-                                                    /!\[宣传海报\|\d+\]\(https:\/\/image\.tmdb\.org\/[^)]+\)/,
-                                                    `![宣传海报|350](${localPath})`
+                                                    /!\[Poster\|\d+\]\(https:\/\/image\.tmdb\.org\/[^)]+\)/,
+                                                    `![Poster|350](${localPath})`
                                                 );
                                             }
                                         }
 										const file = await appendToYearFile(this.app, finalContent, this.settings.defaultSaveFolder, userInput.watchDate, 'movie', this.writingPaths);
                                         this.refreshCardWall();
                                         await this.app.workspace.openLinkText(file.path, '', true);
-                                        new Notice(`已创建: ${file.basename}`);
+                                        new Notice(`Created: ${file.basename}`);
                                     } catch (error) {
-                                        reportError('创建记录失败', error);
+                                        reportError('Failed to create the record', error);
                                     }
                                 })();
                             }).open();
                         } catch (error) {
-                            reportError('获取电影详情失败', error);
+                            reportError('Failed to fetch movie details', error);
                         }
                     })();
                 }).open();
@@ -165,22 +165,22 @@ export default class MovieLogPlugin extends Plugin {
 
         this.addCommand({
             id: 'add-tv',
-            name: '添加剧集记录',
+            name: 'Add TV show record',
             callback: () => {
                 if (!this.settings.tmdbApiKey) {
-                    new Notice('请先在 MovieLog 设置中配置 TMDB API Key');
+                    new Notice('Configure your TMDB API key in MovieLog settings first.');
                     return;
                 }
                 new SearchModal(this.app, this.settings.tmdbApiKey, this.settings.tmdbLanguage, 'tv', (result) => {
                     void (async () => {
                         try {
-                            new Notice('正在获取剧集详情...');
+                            new Notice('Fetching TV show details...');
                             const showDetails = await getTVShowDetails(result.id, this.settings.tmdbApiKey, this.settings.tmdbLanguage);
                             const { SeasonModal } = await import('./season-modal');
                             new SeasonModal(this.app, showDetails, (seasonNumber) => {
                                 void (async () => {
                                     try {
-                                        new Notice('正在获取季详情...');
+                                        new Notice('Fetching season details...');
                                         const seasonDetails = await getSeasonDetails(showDetails.id, seasonNumber, this.settings.tmdbApiKey, this.settings.tmdbLanguage);
                                         new AddRecordModal(this.app, (userInput) => {
                                             void (async () => {
@@ -196,8 +196,8 @@ export default class MovieLogPlugin extends Plugin {
 											);
                                                             if (localPath) {
                                                                 finalContent = content.replace(
-                                                                    /!\[宣传海报\|\d+\]\(https:\/\/image\.tmdb\.org\/[^)]+\)/,
-                                                                    `![宣传海报|350](${localPath})`
+                                                                    /!\[Poster\|\d+\]\(https:\/\/image\.tmdb\.org\/[^)]+\)/,
+                                                                    `![Poster|350](${localPath})`
                                                                 );
                                                             }
                                                         }
@@ -205,19 +205,19 @@ export default class MovieLogPlugin extends Plugin {
 											const file = await appendToYearFile(this.app, finalContent, this.settings.defaultSaveFolder, userInput.watchDate, 'tv', this.writingPaths);
                                                     this.refreshCardWall();
                                                     await this.app.workspace.openLinkText(file.path, '', true);
-                                                    new Notice(`已创建: ${file.basename}`);
+                                                    new Notice(`Created: ${file.basename}`);
                                                 } catch (error) {
-                                                    reportError('创建记录失败', error);
+                                                    reportError('Failed to create the record', error);
                                                 }
                                             })();
                                         }).open();
                                     } catch (error) {
-                                        reportError('获取季详情失败', error);
+                                        reportError('Failed to fetch season details', error);
                                     }
                                 })();
                             }).open();
                         } catch (error) {
-                            reportError('获取剧集详情失败', error);
+                            reportError('Failed to fetch TV show details', error);
                         }
                     })();
                 }).open();
@@ -315,7 +315,7 @@ export default class MovieLogPlugin extends Plugin {
             await this.app.vault.createBinary(filePath, response.arrayBuffer);
             return filePath;
 		} catch (error) {
-			reportError('海报下载失败', error);
+			reportError('Failed to download the poster', error);
             return null;
         }
     }

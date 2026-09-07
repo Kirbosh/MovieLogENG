@@ -13,17 +13,17 @@ export class MovieLogSettingTab extends PluginSettingTab {
     getSettingDefinitions(): SettingDefinitionItem[] {
         return [{
             type: 'group',
-            heading: '设置',
+            heading: 'Records and display',
             items: [
                 {
                     name: 'TMDB API key',
-                    desc: '在 themoviedb.org 注册获取免费 API key',
-                    aliases: ['TMDB', 'API', '密钥'],
+                    desc: 'Create a themoviedb.org account to get a free API key',
+                    aliases: ['TMDB', 'API', 'key'],
                     render: (setting) => this.renderApiKeySetting(setting)
                 },
                 {
-                    name: '默认保存文件夹',
-                    desc: '新记录保存到的文件夹路径',
+                    name: 'Default save folder',
+                    desc: 'Folder path where new records are saved',
                     control: {
                         type: 'text',
                         key: 'defaultSaveFolder',
@@ -31,49 +31,49 @@ export class MovieLogSettingTab extends PluginSettingTab {
                     }
                 },
                 {
-                    name: 'TMDB 语言',
-                    desc: '从 TMDB 获取元数据的语言',
+                    name: 'TMDB language',
+                    desc: 'Language used for metadata from TMDB',
                     control: {
                         type: 'dropdown',
                         key: 'tmdbLanguage',
                         options: {
-                            'zh-CN': '简体中文',
-                            'zh-TW': '繁體中文',
+                            'zh-CN': 'Simplified Chinese',
+                            'zh-TW': 'Traditional Chinese',
                             'en-US': 'English',
-                            'ja-JP': '日本語',
-                            'ko-KR': '한국어'
+                            'ja-JP': 'Japanese',
+                            'ko-KR': 'Korean'
                         }
                     }
                 },
                 {
-                    name: '排序方式',
-                    desc: '卡片墙中的默认排序方式',
+                    name: 'Sort by',
+                    desc: 'Default sort order in the card wall',
                     control: {
                         type: 'dropdown',
                         key: 'sortBy',
                         options: {
-                            [SortBy.WATCH_DATE]: '观看日期',
-                            [SortBy.TITLE]: '标题',
-                            [SortBy.RATING]: '评分',
-                            [SortBy.RELEASE_DATE]: '上映日期'
+                            [SortBy.WATCH_DATE]: 'Watch date',
+                            [SortBy.TITLE]: 'Title',
+                            [SortBy.RATING]: 'Rating',
+                            [SortBy.RELEASE_DATE]: 'Release date'
                         }
                     }
                 },
                 {
-                    name: '子标题样式',
-                    desc: '记录中各区块标题的显示格式',
+                    name: 'Subheading style',
+                    desc: 'How section headings are formatted in records',
                     control: {
                         type: 'dropdown',
                         key: 'subHeadingStyle',
                         options: {
-                            [SubHeadingStyle.BOLD]: '> **引用加粗格式**',
-                            [SubHeadingStyle.HEADING]: '### 标题格式'
+                            [SubHeadingStyle.BOLD]: '> **Bold blockquote**',
+                            [SubHeadingStyle.HEADING]: '### Heading'
                         }
                     }
                 },
                 {
-                    name: '海报本地缓存',
-                    desc: '启用后将海报图片下载到本地，离线也能查看。默认关闭。',
+                    name: 'Cache posters locally',
+                    desc: 'Download posters for offline viewing. Disabled by default.',
                     control: {
                         type: 'toggle',
                         key: 'posterCacheEnabled'
@@ -105,13 +105,13 @@ export class MovieLogSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        new Setting(containerEl).setName('设置').setHeading();
+        new Setting(containerEl).setName('Records and display').setHeading();
 
         this.renderApiKeySetting(new Setting(containerEl));
 
         new Setting(containerEl)
-            .setName('默认保存文件夹')
-            .setDesc('新记录保存到的文件夹路径')
+            .setName('Default save folder')
+            .setDesc('Folder path where new records are saved')
             .addText(text => text
                 .setPlaceholder('MovieLog')
                 .setValue(this.plugin.settings.defaultSaveFolder)
@@ -120,46 +120,46 @@ export class MovieLogSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('TMDB 语言')
-            .setDesc('从 TMDB 获取元数据的语言')
+            .setName('TMDB language')
+            .setDesc('Language used for metadata from TMDB')
             .addDropdown(dropdown => dropdown
-                .addOption('zh-CN', '简体中文')
-                .addOption('zh-TW', '繁體中文')
+                .addOption('zh-CN', 'Simplified Chinese')
+                .addOption('zh-TW', 'Traditional Chinese')
                 .addOption('en-US', 'English')
-                .addOption('ja-JP', '日本語')
-                .addOption('ko-KR', '한국어')
+                .addOption('ja-JP', 'Japanese')
+                .addOption('ko-KR', 'Korean')
                 .setValue(this.plugin.settings.tmdbLanguage)
                 .onChange(async (value) => {
                     await this.setControlValue('tmdbLanguage', value);
                 }));
 
         new Setting(containerEl)
-            .setName('排序方式')
-            .setDesc('卡片墙中的默认排序方式')
+            .setName('Sort by')
+            .setDesc('Default sort order in the card wall')
             .addDropdown(dropdown => dropdown
-                .addOption(SortBy.WATCH_DATE, '观看日期')
-                .addOption(SortBy.TITLE, '标题')
-                .addOption(SortBy.RATING, '评分')
-                .addOption(SortBy.RELEASE_DATE, '上映日期')
+                .addOption(SortBy.WATCH_DATE, 'Watch date')
+                .addOption(SortBy.TITLE, 'Title')
+                .addOption(SortBy.RATING, 'Rating')
+                .addOption(SortBy.RELEASE_DATE, 'Release date')
                 .setValue(this.plugin.settings.sortBy)
                 .onChange(async (value) => {
                     await this.setControlValue('sortBy', value);
                 }));
 
         new Setting(containerEl)
-            .setName('子标题样式')
-            .setDesc('记录中各区块标题的显示格式')
+            .setName('Subheading style')
+            .setDesc('How section headings are formatted in records')
             .addDropdown(dropdown => dropdown
-                .addOption(SubHeadingStyle.BOLD, '> **引用加粗格式**')
-                .addOption(SubHeadingStyle.HEADING, '### 标题格式')
+                .addOption(SubHeadingStyle.BOLD, '> **Bold blockquote**')
+                .addOption(SubHeadingStyle.HEADING, '### Heading')
                 .setValue(this.plugin.settings.subHeadingStyle)
                 .onChange(async (value) => {
                     await this.setControlValue('subHeadingStyle', value);
                 }));
 
         new Setting(containerEl)
-            .setName('海报本地缓存')
-            .setDesc('启用后将海报图片下载到本地，离线也能查看。默认关闭。')
+            .setName('Cache posters locally')
+            .setDesc('Download posters for offline viewing. Disabled by default.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.posterCacheEnabled)
                 .onChange(async (value) => {
@@ -170,10 +170,10 @@ export class MovieLogSettingTab extends PluginSettingTab {
     private renderApiKeySetting(setting: Setting): void {
         setting
             .setName('TMDB API key')
-            .setDesc('在 themoviedb.org 注册获取免费 API key')
+            .setDesc('Create a themoviedb.org account to get a free API key')
             .addText(text => {
                 text
-                    .setPlaceholder('输入你的 TMDB API key')
+                    .setPlaceholder('Enter your TMDB API key')
                     .setValue(this.plugin.settings.tmdbApiKey)
                     .onChange(async (value) => {
                         this.plugin.settings.tmdbApiKey = value.trim();
@@ -184,7 +184,7 @@ export class MovieLogSettingTab extends PluginSettingTab {
             .addExtraButton(btn => {
                 btn
                     .setIcon('eye')
-                    .setTooltip('显示/隐藏 API key')
+                    .setTooltip('Show or hide the API key')
                     .onClick(() => {
                         const inputEl = btn.extraSettingsEl
                             .closest('.setting-item')

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { CACHE_MAX_ENTRIES, CACHE_TTL_MS, pruneTmdbCacheEntries } from '../src/tmdb-cache';
 
-describe('TMDB 持久缓存', () => {
-	it('丢弃过期和畸形缓存条目', () => {
+describe('Persistent TMDB cache', () => {
+	it('discards expired and malformed cache entries', () => {
 		const now = 1_000_000;
 		expect(pruneTmdbCacheEntries({
 			valid: { data: { id: 1 }, timestamp: now - 1 },
@@ -13,7 +13,7 @@ describe('TMDB 持久缓存', () => {
 		});
 	});
 
-	it('只保留最新的缓存条目', () => {
+	it('keeps only the newest cache entries', () => {
 		const now = 10_000_000;
 		const entries: Record<string, unknown> = {};
 		for (let index = 0; index <= CACHE_MAX_ENTRIES; index++) {

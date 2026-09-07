@@ -2,8 +2,6 @@
 
 An Obsidian plugin for tracking your movie and TV series watching history. Fetches media information via TMDB API, generates structured watch records, and displays them in a card wall view.
 
-[中文版本请参阅 README_zh.md](https://github.com/zzditto/MovieLog/blob/main/README_zh.md)
-
 ## Features
 
 - **TMDB Search**: Search movies and TV series via command palette, automatically fetch metadata
@@ -11,12 +9,6 @@ An Obsidian plugin for tracking your movie and TV series watching history. Fetch
 - **Series Support**: Track TV series by season, including episode lists and watch progress
 - **Card Wall View**: Browse all watch records in a visual card grid
 - **Personal Fields**: Fill in your thoughts, personal rating, watch platform, watch status, etc.
-
-## Preview
-
-![Preview](image.png)
-
-![Preview Animation](image.gif)
 
 ## Installation
 
@@ -28,7 +20,7 @@ An Obsidian plugin for tracking your movie and TV series watching history. Fetch
 
 ### Method 2: Manual Installation
 
-1. Download the latest `main.js`, `manifest.json`, `styles.css` from [Releases](https://github.com/zzditto/MovieLog/releases)
+1. Download the latest `main.js`, `manifest.json`, and `styles.css` from this fork's [Releases](https://github.com/Kirbosh/MovieLogENG/releases)
 2. Create the plugin directory in your Obsidian vault:
    ```
    {your vault}/.obsidian/plugins/movielog/
@@ -40,8 +32,8 @@ An Obsidian plugin for tracking your movie and TV series watching history. Fetch
 
 ```bash
 # Clone the repository
-git clone https://github.com/zzditto/MovieLog.git
-cd movielog
+git clone https://github.com/Kirbosh/MovieLogENG.git
+cd MovieLogENG
 
 # Install dependencies
 npm install
@@ -61,9 +53,10 @@ cp main.js manifest.json styles.css /path/to/your/vault/.obsidian/plugins/moviel
    - Get your API Key from [API Settings](https://www.themoviedb.org/settings/api)
 3. Configure other options:
    - **Default Save Folder**: Directory for watch records (default: `MovieLog`)
-   - **TMDB Language**: Metadata language (default: Simplified Chinese)
+   - **TMDB Language**: Metadata language (default: English)
    - **Sort By**: Sort by watch date, title, rating, or release date
    - **Sub-Heading Style**: Display format for section headings in records — either `> **bold blockquote**` (default) or `### heading`
+   - **Cache Posters Locally**: Download poster images into your vault for offline viewing (disabled by default)
 
 MovieLog currently supports Obsidian desktop only. Mobile has not been tested and is not supported.
 

@@ -30,17 +30,17 @@ export class SearchModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
 
-        contentEl.createEl('h2', { text: '搜索影视剧' });
+        contentEl.createEl('h2', { text: 'Search movies and TV shows' });
 
         const inputContainer = contentEl.createDiv({ cls: 'movielog-search-input' });
         const input = inputContainer.createEl('input', {
             type: 'text',
-            placeholder: '输入影视剧名称...',
+            placeholder: 'Enter a title...',
             cls: 'movielog-search-field'
         });
         input.focus();
 
-        const searchBtn = inputContainer.createEl('button', { text: '搜索', cls: 'movielog-search-btn' });
+        const searchBtn = inputContainer.createEl('button', { text: 'Search', cls: 'movielog-search-btn' });
 
 		const doSearch = async () => {
 			this.query = input.value.trim();
@@ -48,7 +48,7 @@ export class SearchModal extends Modal {
 			const requestId = ++this.searchRequestId;
 
             this.resultContainer.empty();
-            this.resultContainer.createEl('p', { text: '搜索中...', cls: 'movielog-search-status' });
+            this.resultContainer.createEl('p', { text: 'Searching...', cls: 'movielog-search-status' });
 
 			try {
 				const results = this.mediaType === 'movie'
@@ -63,7 +63,7 @@ export class SearchModal extends Modal {
 				if (requestId !== this.searchRequestId) return;
                 this.resultContainer.empty();
                 this.resultContainer.createEl('p', {
-                    text: `搜索失败: ${error instanceof Error ? error.message : '未知错误'}`,
+                    text: `Search failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
                     cls: 'movielog-search-error'
                 });
             }
@@ -81,7 +81,7 @@ export class SearchModal extends Modal {
         this.resultContainer.empty();
 
         if (this.results.length === 0) {
-            this.resultContainer.createEl('p', { text: '未找到结果，请尝试其他关键词。', cls: 'movielog-search-status' });
+            this.resultContainer.createEl('p', { text: 'No results found. Try a different search term.', cls: 'movielog-search-status' });
             return;
         }
 

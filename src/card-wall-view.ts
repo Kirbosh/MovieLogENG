@@ -72,7 +72,7 @@ export class MovieLogView extends ItemView {
 		this.refreshTimer = window.setTimeout(() => {
 			this.refreshTimer = null;
 			this.doRefresh().catch((error) => {
-				console.error('[MovieLog] 刷新卡片墙失败:', error);
+				console.error('[MovieLog] Failed to refresh the card wall:', error);
 			});
 		}, MovieLogView.REFRESH_DEBOUNCE_MS);
 	}
@@ -86,8 +86,8 @@ export class MovieLogView extends ItemView {
 
         if (filtered.length === 0) {
             const emptyState = container.createDiv({ cls: 'movielog-empty-state' });
-            emptyState.createEl('p', { text: '还没有观影记录' });
-            emptyState.createEl('p', { text: '使用命令面板添加你的第一部电影或剧集！' });
+            emptyState.createEl('p', { text: 'No watch records yet' });
+            emptyState.createEl('p', { text: 'Use the command palette to add your first movie or TV show.' });
             return;
         }
 
@@ -102,12 +102,12 @@ export class MovieLogView extends ItemView {
         headerLeft.createDiv({
             cls: 'movielog-stats-title',
             text: this.selectedYear
-                ? `观影记录（${this.selectedYear}年）`
-                : '观影记录'
+                ? `Watch history (${this.selectedYear})`
+                : 'Watch history'
         });
         headerLeft.createDiv({
             cls: 'movielog-stats-sub',
-            text: `统计：共 ${filtered.length} 部作品（电影 ${totalMovies} 部 ｜ 电视剧 ${totalTvShows} 部）`
+            text: `${filtered.length} titles (${totalMovies} movies | ${totalTvShows} TV shows)`
         });
 
         const yearFilter = header.createDiv({ cls: 'movielog-year-filter' });
@@ -115,7 +115,7 @@ export class MovieLogView extends ItemView {
 
         const years = [...new Set(this.allRecords.map(r => r.year).filter(Boolean))].sort((a, b) => b.localeCompare(a));
 
-        select.createEl('option', { text: '全部年份', attr: { value: '' } });
+        select.createEl('option', { text: 'All years', attr: { value: '' } });
         if (!this.selectedYear) {
             (select.options[0] as HTMLOptionElement).selected = true;
         }
@@ -123,7 +123,7 @@ export class MovieLogView extends ItemView {
         for (const year of years) {
             const count = this.allRecords.filter(r => r.year === year).length;
             const option = select.createEl('option', {
-                text: `${year}（${count}部）`,
+                text: `${year} (${count})`,
                 attr: { value: year }
             });
             if (year === this.selectedYear) {
@@ -172,7 +172,7 @@ export class MovieLogView extends ItemView {
 				this.fileCache.set(file.path, { mtime: file.stat.mtime, records });
 				return records;
 			} catch (error) {
-				console.error(`[MovieLog] 读取年份文件失败: ${file.path}`, error);
+				console.error(`[MovieLog] Failed to read year file: ${file.path}`, error);
 				return [];
 			}
 		}));
@@ -216,25 +216,25 @@ export class MovieLogView extends ItemView {
 				img.loading = 'lazy';
 				img.alt = record.title;
 				img.onerror = () => {
-					console.warn(`[MovieLog] 海报加载失败: ${record.title} (${posterUrl.substring(0, 80)}...)`);
+					console.warn(`[MovieLog] Failed to load poster: ${record.title} (${posterUrl.substring(0, 80)}...)`);
 					img.remove();
 					const fallback = imgContainer.createDiv({ cls: 'movielog-poster-card-fallback' });
 					if (record.tmdb_link) {
 						const link = fallback.createEl('a', {
-							text: '海报加载失败',
+							text: 'Poster unavailable',
 							href: record.tmdb_link
 						});
 						link.target = '_blank';
-						fallback.createSpan({ text: '点击查看 TMDB 页面' });
+						fallback.createSpan({ text: 'Open the TMDB page' });
 					} else {
-						fallback.createSpan({ text: '海报' });
+						fallback.createSpan({ text: 'Poster' });
 					}
 				};
 			} else {
-				card.createDiv({ cls: 'movielog-poster-card-img', text: '海报' });
+				card.createDiv({ cls: 'movielog-poster-card-img', text: 'Poster' });
 			}
 		} else {
-            card.createDiv({ cls: 'movielog-poster-card-img', text: '海报' });
+            card.createDiv({ cls: 'movielog-poster-card-img', text: 'Poster' });
         }
 
         const info = card.createDiv({ cls: 'movielog-poster-card-info' });
@@ -260,24 +260,24 @@ export class MovieLogView extends ItemView {
 
         const typeItem = metaGrid.createDiv({ cls: 'movielog-meta-item' });
         typeItem.createSpan({ cls: 'movielog-meta-icon', text: record.type === 'movie' ? '🎬' : '📺' });
-        typeItem.createSpan({ cls: 'movielog-meta-value', text: record.type === 'movie' ? '电影' : '电视剧' });
+        typeItem.createSpan({ cls: 'movielog-meta-value', text: record.type === 'movie' ? 'Movie' : 'TV show' });
 
         const dateItem = metaGrid.createDiv({ cls: 'movielog-meta-item' });
         dateItem.createSpan({ cls: 'movielog-meta-icon', text: '📅' });
-        dateItem.createSpan({ cls: 'movielog-meta-value', text: record.release_date || '未知' });
+        dateItem.createSpan({ cls: 'movielog-meta-value', text: record.release_date || 'Unknown' });
 
         const durationItem = metaGrid.createDiv({ cls: 'movielog-meta-item' });
         durationItem.createSpan({ cls: 'movielog-meta-icon', text: '⏱' });
         const durationText = record.type === 'movie'
-            ? `${record.duration}分钟`
-            : `${record.episode_count || 0}集`;
+            ? `${record.duration} min`
+            : `${record.episode_count || 0} episodes`;
         durationItem.createSpan({ cls: 'movielog-meta-value', text: durationText });
 
         const ratingItem = metaGrid.createDiv({ cls: 'movielog-meta-item' });
         ratingItem.createSpan({ cls: 'movielog-meta-icon', text: '🌐' });
         ratingItem.createSpan({ cls: 'movielog-meta-value', text: `${record.tmdb_rating.toFixed(1)}/10` });
 
-        const overview = record.overview || '暂无简介';
+        const overview = record.overview || 'No synopsis available.';
         const truncatedOverview = overview.length > 110 ? overview.substring(0, 110) + '...' : overview;
         info.createDiv({ cls: 'movielog-poster-card-overview', text: truncatedOverview });
 
@@ -288,7 +288,7 @@ export class MovieLogView extends ItemView {
 		if (record.watch_date) {
 			const dateObj = parseLocalDate(record.watch_date);
 			if (dateObj) {
-			const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+			const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 			const dayName = days[dateObj.getDay()];
 			const monthDay = `${dateObj.getMonth() + 1}.${dateObj.getDate()}`;
 			yearDate.createDiv({ cls: 'movielog-poster-card-date', text: `${dayName}.${monthDay}` });
@@ -298,7 +298,7 @@ export class MovieLogView extends ItemView {
 		const rating = right.createDiv({ cls: 'movielog-poster-card-rating' });
 		const score = getDisplayRating(record.personal_rating, record.tmdb_rating);
 		if (score === null) {
-			rating.createDiv({ cls: 'movielog-poster-score', text: '暂无评分' });
+			rating.createDiv({ cls: 'movielog-poster-score', text: 'No rating' });
 			return;
 		}
 
@@ -314,7 +314,7 @@ export class MovieLogView extends ItemView {
 		if (file instanceof TFile) {
 			return this.app.vault.getResourcePath(file);
 		}
-		console.warn(`[MovieLog] 本地海报文件不存在: ${posterPath}`);
+		console.warn(`[MovieLog] Local poster file not found: ${posterPath}`);
 		return '';
 	}
 

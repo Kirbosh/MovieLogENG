@@ -1,24 +1,23 @@
-# 海报墙年份筛选框 — 实现计划
+# Poster Wall Year Filter — Implementation Plan
 
-> **面向 AI 代理的工作者：** 必需子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务实现此计划。步骤使用复选框（`- [ ]`）语法来跟踪进度。
+> **For AI agents:** Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task by task. Track progress with `- [ ]` checkboxes.
 
-**目标：** 在海报墙 header 右上角添加原生 `<select>` 年份下拉筛选框，支持按年份过滤记录。
+**Goal:** Add a native `<select>` year filter to the upper-right corner of the poster-wall header.
 
-**架构：** 在 `MovieLogView` 类中新增 `allRecords` 缓存和 `selectedYear` 状态；将渲染逻辑拆分为文件解析（一次性）和视图渲染（可重复调用）；筛选变更时仅重新渲染视图，不重复解析文件。
+**Architecture:** Add an `allRecords` cache and `selectedYear` state to `MovieLogView`. Separate one-time file parsing from repeatable view rendering so a filter change does not re-read files.
 
-**技术栈：** TypeScript（Obsidian Plugin API），CSS（原生 select 样式）
+**Technology:** TypeScript with the Obsidian Plugin API, plus CSS for the native select.
 
 ---
 
-### 任务 1：CSS — header 布局改为 flex + 筛选框样式
+### Task 1: CSS — flex header and filter styling
 
-**文件：**
-- 修改：`styles.css:267-270`（`.movielog-poster-header`）
-- 新增：`styles.css` 末尾（`.movielog-year-filter` 及 `.movielog-header-left`）
+**Files:**
 
-- [ ] **步骤 1：修改 `.movielog-poster-header` 为 flex 布局，新增左侧标题包装器**
+- Modify `.movielog-poster-header` in `styles.css`.
+- Add `.movielog-year-filter` and `.movielog-header-left` styles to `styles.css`.
 
-在 `styles.css` 中，找到 `.movielog-poster-header` 块（第 267-270 行），替换为：
+- [ ] **Step 1: Convert the header to flex layout and add the left-side title wrapper**
 
 ```css
 .movielog-poster-header {
@@ -36,9 +35,7 @@
 }
 ```
 
-- [ ] **步骤 2：新增 `.movielog-year-filter` 及 `select` 样式**
-
-在 `styles.css` 末尾追加：
+- [ ] **Step 2: Add the year-filter styles**
 
 ```css
 /* ===== Year Filter ===== */
@@ -66,149 +63,89 @@
 }
 ```
 
-- [ ] **步骤 3：验证 CSS**
+- [ ] **Step 3: Verify the CSS**
 
-运行 `npm run build`，确认编译无错误。
-
----
-
-### 任务 2：TypeScript — 核心筛选逻辑
-
-**文件：**
-- 修改：`src/card-wall-view.ts`
-
-- [ ] **步骤 1：新增 `allRecords` 和 `selectedYear` 字段**
-
-在 `MovieLogView` 类内（约第 31 行，`private resizeObserver` 下方）添加：
-
-```typescript
-    private allRecords: ParsedRecord[] = [];
-    private selectedYear: string | null = null;
-```
-
-- [ ] **步骤 2：重构 `renderCards()` — 缓存记录并委托渲染**
-
-将 `renderCards()` 方法（第 72-100 行）替换为：
-
-```typescript
-    private async renderCards(container: HTMLElement): Promise<void> {
-        this.allRecords = await this.parseAllYearFiles();
-        this.renderFilteredView(container);
-    }
-```
-
-- [ ] **步骤 3：新增 `renderFilteredView()` 方法**
-
-在 `renderCards()` 方法下方新增（原第 100 行之后）：
-
-```typescript
-    private renderFilteredView(container: HTMLElement): void {
-        container.empty();
-
-        const filtered = this.selectedYear
-            ? this.allRecords.filter(r => r.year === this.selectedYear)
-            : this.allRecords;
-
-        if (filtered.length === 0) {
-            const emptyState = container.createDiv({ cls: 'movielog-empty-state' });
-            emptyState.createEl('p', { text: '还没有观影记录' });
-            emptyState.createEl('p', { text: '使用命令面板添加你的第一部电影或剧集！' });
-            return;
-        }
-
-        this.sortRecords(filtered);
-
-        const totalMovies = filtered.filter(r => r.type === 'movie').length;
-        const totalTvShows = filtered.filter(r => r.type === 'tv').length;
-
-        const header = container.createDiv({ cls: 'movielog-poster-header' });
-
-        const headerLeft = header.createDiv({ cls: 'movielog-header-left' });
-        headerLeft.createDiv({
-            cls: 'movielog-stats-title',
-            text: this.selectedYear
-                ? `观影记录（${this.selectedYear}年）`
-                : '观影记录'
-        });
-        headerLeft.createDiv({
-            cls: 'movielog-stats-sub',
-            text: `统计：共 ${filtered.length} 部作品（电影 ${totalMovies} 部 ｜ 电视剧 ${totalTvShows} 部）`
-        });
-
-        const yearFilter = header.createDiv({ cls: 'movielog-year-filter' });
-        const select = yearFilter.createEl('select');
-
-        const years = [...new Set(this.allRecords.map(r => r.year).filter(Boolean))].sort((a, b) => b.localeCompare(a));
-
-        select.createEl('option', { text: '全部年份', attr: { value: '' } });
-        if (!this.selectedYear) {
-            (select.options[0] as HTMLOptionElement).selected = true;
-        }
-
-        for (const year of years) {
-            const count = this.allRecords.filter(r => r.year === year).length;
-            const option = select.createEl('option', {
-                text: `${year}（${count}部）`,
-                attr: { value: year }
-            });
-            if (year === this.selectedYear) {
-                option.selected = true;
-            }
-        }
-
-        select.addEventListener('change', () => {
-            this.selectedYear = select.value || null;
-            this.renderFilteredView(container);
-        });
-
-        const grid = container.createDiv({ cls: 'movielog-poster-wall' });
-
-        for (let i = 0; i < filtered.length; i++) {
-            const record = filtered[i]!;
-            const colorTheme = COLOR_THEMES[i % COLOR_THEMES.length]!;
-            this.renderPosterCard(grid, record, colorTheme);
-        }
-    }
-```
-
-- [ ] **步骤 4：修改 `refreshCards()` — 重置筛选状态**
-
-将 `refreshCards()` 方法（第 65-70 行）替换为：
-
-```typescript
-    async refreshCards(): Promise<void> {
-        const container = this.containerEl.children[1] as HTMLElement | undefined;
-        if (!container) return;
-        this.selectedYear = null;
-        await this.renderCards(container);
-    }
-```
-
-- [ ] **步骤 5：删除 `renderCards()` 中不再需要的单一年份标题逻辑**
-
-原 `renderCards()` 中第 88-90 行的 `yearSet` / `yearText` 逻辑已由 `renderFilteredView()` 中的标题逻辑替代，删除后无需额外处理（步骤 2 已整体替换）。验证 `npm run build` 无编译错误。
+Run `npm run build` and confirm there are no compilation errors.
 
 ---
 
-### 任务 3：验证
+### Task 2: TypeScript — core filtering behavior
 
-- [ ] **步骤 1：构建验证**
+**File:** `src/card-wall-view.ts`
+
+- [ ] **Step 1: Add `allRecords` and `selectedYear` fields**
+
+```typescript
+private allRecords: ParsedRecord[] = [];
+private selectedYear: string | null = null;
+```
+
+- [ ] **Step 2: Refactor record loading to cache the result and delegate rendering**
+
+```typescript
+private async renderCards(container: HTMLElement): Promise<void> {
+    this.allRecords = await this.parseAllYearFiles();
+    this.renderFilteredView(container);
+}
+```
+
+- [ ] **Step 3: Add `renderFilteredView()`**
+
+The method should:
+
+1. Clear the container.
+2. Filter `allRecords` by `selectedYear` when a year is selected.
+3. Render an English empty state when there are no results.
+4. Sort the filtered records with the existing sort behavior.
+5. Render the dynamic title and movie/TV counts.
+6. Build an `All years` option followed by descending year options with counts.
+7. Update `selectedYear` and re-render on `change`.
+8. Render the filtered card grid.
+
+Representative UI strings:
+
+```typescript
+emptyState.createEl('p', { text: 'No watch records yet' });
+emptyState.createEl('p', { text: 'Use the command palette to add your first movie or TV show.' });
+
+const title = this.selectedYear
+    ? `Watch history (${this.selectedYear})`
+    : 'Watch history';
+
+select.createEl('option', { text: 'All years', attr: { value: '' } });
+```
+
+- [ ] **Step 4: Reset filter state when required by the refresh behavior**
+
+The original design reset `selectedYear` during a full refresh. If refreshes should preserve the current filter, keep the state and only replace `allRecords`; document the selected behavior.
+
+- [ ] **Step 5: Remove superseded single-year title logic**
+
+Delete the old `yearSet` / `yearText` logic after the dynamic header is in place. Run `npm run build`.
+
+---
+
+### Task 3: Verification
+
+- [ ] **Step 1: Build**
 
 ```bash
 npm run build
 ```
-预期：TypeScript 编译无错误，esbuild 输出 `main.js`。
 
-- [ ] **步骤 2：Lint 验证**
+Expected: TypeScript completes without errors and esbuild outputs `main.js`.
+
+- [ ] **Step 2: Lint**
 
 ```bash
 npm run lint
 ```
-预期：无 ESLint 错误。
 
-- [ ] **步骤 3：提交**
+Expected: no ESLint errors.
+
+- [ ] **Step 3: Commit**
 
 ```bash
 git add styles.css src/card-wall-view.ts
-git commit -m "feat: 海报墙新增年份下拉筛选框"
+git commit -m "feat: add a year filter to the poster wall"
 ```

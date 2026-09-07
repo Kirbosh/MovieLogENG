@@ -60,10 +60,10 @@ export enum WatchStatus {
 }
 
 export const WATCH_STATUS_LABELS: Record<WatchStatus, string> = {
-	[WatchStatus.PLANNED]: '计划观看',
-	[WatchStatus.WATCHING]: '正在观看',
-	[WatchStatus.COMPLETED]: '已看完',
-	[WatchStatus.DROPPED]: '已弃剧'
+	[WatchStatus.PLANNED]: 'Planned',
+	[WatchStatus.WATCHING]: 'Watching',
+	[WatchStatus.COMPLETED]: 'Completed',
+	[WatchStatus.DROPPED]: 'Dropped'
 };
 
 export enum SortBy {
@@ -144,7 +144,7 @@ export interface TMDBEpisode {
 
 export const DEFAULT_SETTINGS: PluginSettings = {
     tmdbApiKey: '',
-    tmdbLanguage: 'zh-CN',
+    tmdbLanguage: 'en-US',
     defaultSaveFolder: 'MovieLog',
     sortBy: SortBy.WATCH_DATE,
     subHeadingStyle: SubHeadingStyle.BOLD,
