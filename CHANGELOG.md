@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.8.5] - 2026-09-07
 
 ### Changed
 
@@ -84,3 +84,4 @@
 - Added separate record types for movies and TV seasons.
 - Added watch-status tracking: planned, watching, completed, and dropped.
 - Added personal ratings and reviews.
+

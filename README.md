@@ -12,7 +12,11 @@ An Obsidian plugin for tracking your movie and TV series watching history. Fetch
 
 ## Installation
 
-### Method 1: Build from Source (Recommended for This Fork)
+### Method 1: Install Release Files (Recommended)
+
+Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/Kirbosh/MovieLogENG/releases/latest), copy them to `{your vault}/.obsidian/plugins/movielog/`, restart Obsidian, and enable MovieLog under Community Plugins.
+
+### Method 2: Build from Source
 
 ```bash
 # Clone the repository
@@ -30,10 +34,6 @@ cp main.js manifest.json styles.css /path/to/your/vault/.obsidian/plugins/moviel
 ```
 
 Restart Obsidian, then open Settings → Community Plugins and enable MovieLog.
-
-### Method 2: Install Release Files
-
-When this fork publishes a release, download `main.js`, `manifest.json`, and `styles.css` from [Releases](https://github.com/Kirbosh/MovieLogENG/releases), copy them to `{your vault}/.obsidian/plugins/movielog/`, restart Obsidian, and enable MovieLog under Community Plugins.
 
 ## Configuration
 
@@ -78,3 +78,4 @@ MovieLog currently supports Obsidian desktop only. Mobile has not been tested an
 ## License
 
 MIT License
+
