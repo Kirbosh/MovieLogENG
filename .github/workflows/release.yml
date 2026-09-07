@@ -2,6 +2,11 @@ name: Release Obsidian Plugin
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to build and upload"
+        required: true
+        type: string
   push:
     tags:
       - "*"
@@ -33,8 +38,8 @@ jobs:
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: |
-          TAG_NAME=${GITHUB_REF#refs/tags/}
           VERSION=${TAG_NAME#v}
 
           # Extract changelog section for this version
@@ -65,7 +70,7 @@ jobs:
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: |
-          TAG_NAME=${GITHUB_REF#refs/tags/}
           gh release upload "$TAG_NAME" main.js manifest.json styles.css --clobber
 
